@@ -1,0 +1,38 @@
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Lock files (optional - comment out if you want to include)
+# uv.lock
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
