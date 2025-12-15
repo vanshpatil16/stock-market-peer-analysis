@@ -613,6 +613,3 @@ Streamlit Cloud free tier provides:
 ---
 
 **Happy Analyzing! 📈**
-
-#   s t o c k - m a r k e t - p e e r - a n a l y s i s  
- 
