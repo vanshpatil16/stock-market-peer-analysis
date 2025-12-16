@@ -104,7 +104,8 @@ The app will start and display:
 ### 1. **Select Stocks**
 
 - Use the **"Stock tickers"** multiselect dropdown in the left panel
-- Choose from 70+ predefined Indian stocks (RELIANCE.NS, TCS.NS, HDFCBANK.NS, etc.)
+- Choose from 220+ verified Indian stocks (RELIANCE.NS, TCS.NS, HDFCBANK.NS, etc.)
+- Includes major large-cap, mid-cap, and well-known small-cap stocks
 - Or type custom ticker symbols (e.g., "RELIANCE.NS", "TCS.NS", "INFY.NS")
 - **Note**: Use `.NS` suffix for NSE (National Stock Exchange) stocks or `.BO` for BSE (Bombay Stock Exchange) stocks
 - Default selection: `["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS"]`
@@ -131,8 +132,13 @@ The app displays several sections:
 #### **Individual vs Peer Average** (Main Section)
 - For each selected stock:
   - **Line Chart**: Stock price vs peer average (excluding itself)
+    - Color-coded with rotating palette (orange, dark blue, green, amber, purple, pink, teal)
+    - Peer average shown in gray for consistency
   - **Area Chart**: Difference between stock and peer average
+    - Uses matching stock color with transparency
+    - Smooth interpolation for better visualization
 - Helps identify stocks outperforming or underperforming their peers
+- **Note**: The "peer average" when analyzing stock X always excludes X itself
 
 #### **Raw Data Table** (Bottom)
 - Complete historical price data for all selected stocks
@@ -293,13 +299,13 @@ st.set_page_config(...)     # Page setup (wide layout)
 
 **Why**: Sets up the foundation - imports necessary libraries and configures the page layout.
 
-#### 2. **Stock Data Constants** (Lines 38-134)
+#### 2. **Stock Data Constants** (Lines 30-270)
 ```python
-STOCKS = ["AAPL", "MSFT", ...]  # 100+ predefined tickers
-DEFAULT_STOCKS = [...]          # Default selection
+STOCKS = ["RELIANCE.NS", "TCS.NS", ...]  # 220+ verified Indian stocks
+DEFAULT_STOCKS = [...]                   # Default selection
 ```
 
-**Why**: Provides a curated list of major stocks and sensible defaults for first-time users.
+**Why**: Provides a curated list of verified major Indian stocks (large-cap, mid-cap, and well-known small-cap) with sensible defaults for first-time users. Invalid tickers have been removed to prevent errors.
 
 #### 3. **Session State & URL Parameters** (Lines 143-197)
 ```python
@@ -348,14 +354,20 @@ peer_avg = peers.mean(axis=1)
 
 #### 7. **Visualization Components**
 
-**Main Chart** (Lines 260-274): Altair line chart showing all stocks
-**Metrics** (Lines 244-256): Best/worst stock cards
-**Individual Charts** (Lines 308-348): Per-stock comparison charts
+**Main Chart**: Altair line chart showing all stocks with normalized prices
+**Metrics**: Best/worst stock cards with performance percentages
+**Individual Charts**: Per-stock comparison charts with:
+  - Color-coded lines (rotating palette: orange, dark blue, green, etc.)
+  - Gray peer average lines
+  - Matching colored area charts for deltas
+**News Marquee**: Scrolling ticker at top showing latest news
+**News Cards**: Flashcard-style display with sentiment color coding
 
 **Why**: Multiple views provide different insights:
 - Overview: See all stocks together
 - Metrics: Quick performance summary
 - Individual: Deep dive into each stock's relative performance
+- News: Stay updated with market developments and sentiment
 
 ## ✨ Key Features
 
@@ -378,11 +390,20 @@ peer_avg = peers.mean(axis=1)
 - Hover tooltips on charts
 - Responsive layout adapts to screen size
 - Real-time updates on user input
+- Color-coded charts with rotating palette (orange, dark blue, green, etc.)
+- Smooth area chart interpolations
 
 ### 5. **Peer Analysis Logic**
 - Excludes self from peer average calculation
 - Provides fair comparison baseline
 - Highlights outperformance/underperformance
+
+### 6. **News Integration**
+- Multi-source news aggregation (Finnhub, NewsAPI, Yahoo Finance)
+- Real-time marquee for all stocks
+- Sentiment-based categorization and sorting
+- Flashcard-style display with color coding
+- Automatic filtering of invalid/duplicate articles
 
 ## 🐛 Troubleshooting
 
@@ -415,6 +436,8 @@ streamlit run streamlit_app.py
 - Verify ticker symbols are correct
 - Check if stocks are still actively traded
 - The app will show an error message for problematic tickers
+- The stock list has been curated to remove known invalid tickers
+- If you encounter a new invalid ticker, it will be displayed in an error message
 
 ### Issue: Port Already in Use
 
@@ -445,16 +468,32 @@ The application includes comprehensive news aggregation similar to [LiveTradeBen
 ### Features
 
 - **Multi-Source News Aggregation**: Fetches news from multiple sources:
-  - **Finnhub** (free tier available)
-  - **NewsAPI** (free tier available)
-  - **Yahoo Finance** (fallback)
-- **Real-time News Marquee**: Scrolling ticker at the top showing latest news for all tracked stocks
+  - **Finnhub** (free tier available) - Financial news focused
+  - **NewsAPI** (free tier available) - General news coverage
+  - **Yahoo Finance** (fallback) - Stock-specific news
+- **Real-time News Marquee**: 
+  - Scrolling ticker at the top of the page
+  - Shows latest news for ALL tracked stocks (even if not selected)
+  - Continuous horizontal scroll with latest updates
+- **Flashcard-Style News Display**:
+  - Beautiful card-based layout with dark theme
+  - Color-coded ticker symbols matching sentiment
+  - Prominent titles and summaries
+  - Source attribution and relative timestamps
 - **Sentiment Analysis**: Automatically categorizes news as:
-  - 📈 Growth-related (green)
-  - 📉 Depreciation-related (red)
-  - 📰 General news (gray)
-- **Smart Filtering**: Removes duplicate articles and invalid data
+  - 🟢 **Growth-related** (green) - Positive news, gains, upgrades, bullish sentiment
+  - 🔴 **Depreciation-related** (red) - Negative news, losses, downgrades, bearish sentiment
+  - 🔵 **General news** (blue) - Neutral market updates and announcements
+- **Smart News Sorting**: 
+  - Growth news appears first (green cards)
+  - Depreciation news follows (red cards)
+  - General news at the end (blue cards)
+- **Smart Filtering**: 
+  - Removes duplicate articles across sources
+  - Filters out invalid data (missing titles, invalid dates)
+  - Validates article timestamps (excludes pre-2000 dates)
 - **Relative Time Display**: Shows "2h ago", "1d ago" format for easy reading
+- **Color Legend**: Clear explanation of what each color represents
 
 ### Optional API Keys Setup
 
@@ -489,6 +528,17 @@ NEWSAPI_KEY = "your-key"
 ```
 
 **Note**: The app works without API keys using Yahoo Finance as a fallback, but adding API keys significantly improves news coverage and quality.
+
+### News Display Features
+
+- **Marquee**: Shows news for all stocks in the list, even if not currently selected
+- **Selected Stocks News**: Displays detailed news cards for selected stocks only
+- **Sentiment Colors**: 
+  - Green border/ticker = Growth/positive news
+  - Red border/ticker = Depreciation/negative news
+  - Blue border/ticker = General/neutral news
+- **Sorting**: News automatically sorted by sentiment (growth first, then depreciation, then general)
+- **Validation**: Invalid articles (no title, invalid dates) are automatically filtered out
 
 ## 🚀 Deploying to Streamlit Cloud
 
