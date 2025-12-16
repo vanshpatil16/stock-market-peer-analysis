@@ -11,6 +11,8 @@ This application provides a **peer analysis dashboard** for stock market data. I
 - **Visualize performance metrics** over different time periods (1 month to 20 years)
 - **Share analysis views** via URL parameters
 - **Explore stock relationships** through interactive charts and metrics
+- **Stay updated with real-time news** from multiple sources with automatic sentiment analysis
+- **View market news marquee** showing latest updates for all tracked stocks
 
 ## 🏗️ Project Structure
 
@@ -34,6 +36,7 @@ demo-stockpeers/
 | **yfinance** | Yahoo Finance API wrapper | Fetch real-time and historical stock data (supports Indian stocks with .NS/.BO suffix) | Data fetching in `load_data()` function |
 | **pandas** | Data manipulation library | Process and transform stock price data | Data normalization, DataFrame operations |
 | **Altair** | Declarative visualization library | Create interactive charts with minimal code | All chart visualizations (line, area charts) |
+| **requests** | HTTP library | Fetch news from multiple APIs (Finnhub, NewsAPI) | Multi-source news aggregation |
 | **uv** | Fast Python package manager | Quick dependency management and virtual environments | Project setup and dependency installation |
 
 ## 📋 Prerequisites
@@ -434,6 +437,58 @@ streamlit run streamlit_app.py --server.port 8502
 - **BSE (Bombay Stock Exchange)**: Append `.BO` to the ticker (e.g., `RELIANCE.BO`, `TCS.BO`)
 - Most popular stocks are listed on NSE, so `.NS` is commonly used
 - You can mix NSE and BSE stocks in the same analysis
+
+## 📰 News Features
+
+The application includes comprehensive news aggregation similar to [LiveTradeBench](https://github.com/ulab-uiuc/live-trade-bench):
+
+### Features
+
+- **Multi-Source News Aggregation**: Fetches news from multiple sources:
+  - **Finnhub** (free tier available)
+  - **NewsAPI** (free tier available)
+  - **Yahoo Finance** (fallback)
+- **Real-time News Marquee**: Scrolling ticker at the top showing latest news for all tracked stocks
+- **Sentiment Analysis**: Automatically categorizes news as:
+  - 📈 Growth-related (green)
+  - 📉 Depreciation-related (red)
+  - 📰 General news (gray)
+- **Smart Filtering**: Removes duplicate articles and invalid data
+- **Relative Time Display**: Shows "2h ago", "1d ago" format for easy reading
+
+### Optional API Keys Setup
+
+For enhanced news coverage, you can optionally add API keys:
+
+1. **Finnhub API** (Recommended - Free tier available):
+   - Sign up at [finnhub.io](https://finnhub.io)
+   - Get your free API key
+   - Add to Streamlit secrets: `FINNHUB_API_KEY`
+
+2. **NewsAPI** (Optional):
+   - Sign up at [newsapi.org](https://newsapi.org)
+   - Get your free API key
+   - Add to Streamlit secrets: `NEWSAPI_KEY`
+
+### Setting Up API Keys in Streamlit
+
+**For Local Development:**
+Create a `.streamlit/secrets.toml` file:
+```toml
+FINNHUB_API_KEY = "your-finnhub-key-here"
+NEWSAPI_KEY = "your-newsapi-key-here"
+```
+
+**For Streamlit Cloud:**
+1. Go to your app settings on Streamlit Cloud
+2. Click "Secrets"
+3. Add your keys in the format:
+```
+FINNHUB_API_KEY = "your-key"
+NEWSAPI_KEY = "your-key"
+```
+
+**Note**: The app works without API keys using Yahoo Finance as a fallback, but adding API keys significantly improves news coverage and quality.
 
 ## 🚀 Deploying to Streamlit Cloud
 
