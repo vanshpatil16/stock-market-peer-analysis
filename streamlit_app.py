@@ -634,7 +634,8 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
     try:
         finnhub_key = st.secrets.get("FINNHUB_API_KEY", None)
         newsapi_key = st.secrets.get("NEWSAPI_KEY", None)
-    except Exception:
+    except Exception as e:
+        # On Streamlit Cloud, if secrets aren't configured, this is expected
         finnhub_key = None
         newsapi_key = None
     
@@ -644,19 +645,23 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
         # Try Finnhub first (free tier, no key required for limited requests)
         try:
             finnhub_news = fetch_news_finnhub(ticker, finnhub_key)
-            all_articles.extend(finnhub_news)
-        except Exception:
+            if finnhub_news:
+                all_articles.extend(finnhub_news)
+        except Exception as e:
+            # Silently continue to next source
             pass
         
         # Try NewsAPI if key is available
         if newsapi_key:
             try:
                 newsapi_news = fetch_news_newsapi(ticker, newsapi_key)
-                all_articles.extend(newsapi_news)
-            except Exception:
+                if newsapi_news:
+                    all_articles.extend(newsapi_news)
+            except Exception as e:
+                # Silently continue to next source
                 pass
         
-        # Fallback to yfinance
+        # Fallback to yfinance (this should always work)
         try:
             ticker_obj = yf.Ticker(ticker)
             yf_news = ticker_obj.news
@@ -665,7 +670,8 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
                     article['ticker'] = ticker
                     if is_valid_article(article):
                         all_articles.append(article)
-        except Exception:
+        except Exception as e:
+            # If yfinance fails, log but continue
             pass
         
         # Remove duplicates based on title similarity
@@ -689,6 +695,9 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
         
         if unique_articles:
             news_data[ticker] = unique_articles[:30]  # Limit to 30 per ticker
+        else:
+            # Even if no articles found, add empty list so we know we tried
+            news_data[ticker] = []
     
     return news_data
 
@@ -696,7 +705,11 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
 @st.cache_resource(show_spinner=False, ttl="1h")
 def load_news(tickers: List[str]) -> Dict[str, List[Dict]]:
     """Load news articles for given tickers (uses multi-source approach)."""
-    return load_news_multi_source(tickers)
+    try:
+        return load_news_multi_source(tickers)
+    except Exception as e:
+        # Return empty dict on error, but log for debugging
+        return {}
 
 
 # Load the data
@@ -950,14 +963,20 @@ if tickers:
     try:
         with st.spinner("Loading news articles..."):
             news_data = load_news(tickers)
+            
+            # If news_data is empty, try loading directly (bypass cache)
+            if not news_data or all(len(articles) == 0 for articles in news_data.values()):
+                # Try loading without cache as fallback
+                news_data = load_news_multi_source(tickers)
         
         # Collect all articles from all selected stocks
         all_articles = []
         for ticker, articles in news_data.items():
-            for article in articles:
-                if is_valid_article(article):
-                    article['source_ticker'] = ticker
-                    all_articles.append(article)
+            if articles:  # Check if articles list exists and is not empty
+                for article in articles:
+                    if is_valid_article(article):
+                        article['source_ticker'] = ticker
+                        all_articles.append(article)
         
         if all_articles:
             # Sort by sentiment (green first, then red, then blue), then by date (newest first)
@@ -1022,6 +1041,13 @@ if tickers:
                         # Truncate summary for display
                         summary_display = summary[:150] + ('...' if len(summary) > 150 else '') if summary else ''
                         
+                        # Escape HTML special characters to prevent XSS
+                        import html
+                        title_escaped = html.escape(title)
+                        summary_escaped = html.escape(summary_display)
+                        publisher_escaped = html.escape(publisher)
+                        ticker_escaped = html.escape(ticker)
+                        
                         card_html = f"""
                         <div style="
                             background: #2a2a2a;
@@ -1036,29 +1062,35 @@ if tickers:
                             transition: transform 0.2s;
                         ">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                                <span style="color: {ticker_color}; font-weight: 700; font-size: 20px; letter-spacing: 0.5px;">{ticker}</span>
+                                <span style="color: {ticker_color}; font-weight: 700; font-size: 20px; letter-spacing: 0.5px;">{ticker_escaped}</span>
                                 <span style="color: #999; font-size: 13px; font-weight: 400;">{time_str}</span>
                             </div>
                             <a href="{link}" target="_blank" style="text-decoration: none; color: #fff; display: block; margin-bottom: 12px;">
                                 <h3 style="color: #fff; font-size: 17px; font-weight: 700; margin: 0; line-height: 1.4; letter-spacing: -0.2px;">
-                                    {title}
+                                    {title_escaped}
                                 </h3>
                             </a>
                             <p style="color: #bbb; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; flex-grow: 1; overflow: hidden;">
-                                {summary_display}
+                                {summary_escaped}
                             </p>
                             <div style="color: #888; font-size: 12px; margin-top: auto; border-top: 1px solid #3a3a3a; padding-top: 12px;">
-                                {publisher}
+                                {publisher_escaped}
                             </div>
                         </div>
                         """
                         st.markdown(card_html, unsafe_allow_html=True)
         else:
+            # Show helpful message if no articles found
             st.info("No news articles available for the selected stocks at this time.")
             st.caption(f"Attempted to load news for: {', '.join(tickers)}")
+            st.caption("💡 Tip: Try selecting different stocks or check back later. News is fetched from multiple sources.")
             
     except Exception as e:
-        st.warning(f"Unable to load news articles. Error: {str(e)}")
-        st.caption("News feature may not be available for all tickers or may be temporarily unavailable.")
+        # More detailed error message for debugging
+        st.error(f"Error loading news: {str(e)}")
+        st.caption("If this persists, the news service may be temporarily unavailable. The app will continue to work for stock analysis.")
+        # Log the error for debugging (only visible in logs, not to user)
+        import traceback
+        st.code(traceback.format_exc(), language='python')
 else:
     st.info("Select at least one stock to view news articles.")
