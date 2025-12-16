@@ -773,6 +773,164 @@ else:
     with bottom_left_cell:
         st.warning("Unable to calculate performance metrics. Some stocks may have missing data.")
 
+# Stock Performance Leaderboard
+st.markdown("---")
+leaderboard_container = st.container(border=True)
+
+with leaderboard_container:
+    st.markdown("## Performance Leaderboard")
+    
+    # Dropdown to select leaderboard type
+    leaderboard_type = st.selectbox(
+        "Select Leaderboard Type",
+        ["Current Selected Stocks", "Top Indian Stocks"],
+        key="leaderboard_type"
+    )
+    
+    # Define top Indian stocks (major large-cap stocks)
+    top_indian_stocks = [
+        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+        "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
+        "LT.NS", "HCLTECH.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS",
+        "WIPRO.NS", "NESTLEIND.NS", "SUNPHARMA.NS", "BAJFINANCE.NS", "TITAN.NS"
+    ]
+    
+    # Determine which stocks to show in leaderboard
+    if leaderboard_type == "Top Indian Stocks":
+        stocks_for_leaderboard = top_indian_stocks
+        st.caption(f"Ranking of top {len(top_indian_stocks)} Indian stocks by their performance over the selected time period.")
+        
+        # Load data for top Indian stocks
+        try:
+            top_stocks_data = load_data(stocks_for_leaderboard, horizon_map[horizon])
+            
+            # Normalize prices
+            top_stocks_normalized = top_stocks_data.div(top_stocks_data.iloc[0].replace(0, pd.NA))
+            top_stocks_normalized = top_stocks_normalized.replace([float('inf'), float('-inf')], pd.NA)
+            
+            # Get latest normalized values for top stocks
+            top_stocks_norm_values = {}
+            for ticker in stocks_for_leaderboard:
+                if ticker in top_stocks_normalized.columns:
+                    latest_value = top_stocks_normalized[ticker].iat[-1]
+                    if pd.notna(latest_value) and pd.notna(top_stocks_normalized[ticker].iloc[0]):
+                        top_stocks_norm_values[latest_value] = ticker
+            
+            leaderboard_norm_values = top_stocks_norm_values
+        except Exception as e:
+            st.error(f"Error loading data for top Indian stocks: {str(e)}")
+            leaderboard_norm_values = latest_norm_values if latest_norm_values else {}
+    else:
+        stocks_for_leaderboard = tickers
+        st.caption("Ranking of all selected stocks by their performance over the selected time period.")
+        leaderboard_norm_values = latest_norm_values
+    
+    if leaderboard_norm_values and len(leaderboard_norm_values) > 1:
+        # Create leaderboard data
+        leaderboard_data = []
+        for norm_value, ticker in leaderboard_norm_values.items():
+            if pd.notna(norm_value):
+                performance_pct = (norm_value - 1.0) * 100
+                leaderboard_data.append({
+                    'Stock': ticker,
+                    'Performance %': round(performance_pct, 2),
+                    'Normalized Value': round(norm_value, 4)
+                })
+        
+        # Sort by performance (descending)
+        leaderboard_data.sort(key=lambda x: x['Performance %'], reverse=True)
+        leaderboard_df = pd.DataFrame(leaderboard_data)
+        
+        # Add rank column
+        leaderboard_df.insert(0, 'Rank', range(1, len(leaderboard_df) + 1))
+        
+        # Create horizontal bar chart
+        chart_data = leaderboard_df.copy()
+        
+        # Color bars based on performance (green for positive, red for negative)
+        chart_data['Color'] = chart_data['Performance %'].apply(
+            lambda x: '#10B981' if x >= 0 else '#EF4444'
+        )
+        
+        # Create the bar chart
+        bars = alt.Chart(chart_data).mark_bar(
+            cornerRadiusTopRight=5,
+            cornerRadiusBottomRight=5
+        ).encode(
+            y=alt.Y(
+                'Stock:N',
+                sort=alt.EncodingSortField(field='Performance %', order='descending'),
+                title='Stock',
+                axis=alt.Axis(labelLimit=200)
+            ),
+            x=alt.X(
+                'Performance %:Q',
+                title='Performance (%)',
+                axis=alt.Axis(format='.1f')
+            ),
+            color=alt.Color(
+                'Color:N',
+                scale=None,
+                legend=None
+            ),
+            tooltip=[
+                alt.Tooltip('Rank:O', title='Rank'),
+                alt.Tooltip('Stock:N', title='Stock'),
+                alt.Tooltip('Performance %:Q', title='Performance', format='.2f'),
+                alt.Tooltip('Normalized Value:Q', title='Normalized Value', format='.4f')
+            ]
+        ).properties(
+            height=max(400, len(leaderboard_df) * 40),
+            title='Stock Performance Ranking'
+        )
+        
+        # Add text labels on bars
+        text = bars.mark_text(
+            align='left',
+            baseline='middle',
+            dx=3,
+            color='white',
+            fontSize=11,
+            fontWeight='bold'
+        ).encode(
+            text=alt.Text('Performance %:Q', format='+.2f')
+        )
+        
+        # Combine chart and text
+        leaderboard_chart = (bars + text).configure_view(
+            strokeWidth=0
+        ).configure_axis(
+            gridColor='#333333',
+            domainColor='#666666',
+            labelColor='#CCCCCC',
+            titleColor='#CCCCCC'
+        )
+        
+        # Display chart
+        st.altair_chart(leaderboard_chart, use_container_width=True)
+        
+        # Also show as a table below the chart
+        with st.expander("View Leaderboard Table", expanded=False):
+            # Format the dataframe for display
+            display_df = leaderboard_df.copy()
+            display_df['Performance %'] = display_df['Performance %'].apply(lambda x: f"{x:+.2f}%")
+            display_df['Normalized Value'] = display_df['Normalized Value'].apply(lambda x: f"{x:.4f}")
+            display_df = display_df.rename(columns={
+                'Rank': 'Rank',
+                'Stock': 'Stock',
+                'Performance %': 'Performance',
+                'Normalized Value': 'Normalized Value'
+            })
+            st.dataframe(
+                display_df,
+                use_container_width=True,
+                hide_index=True
+            )
+    elif leaderboard_norm_values and len(leaderboard_norm_values) == 1:
+        st.info("Select at least 2 stocks to view the leaderboard.")
+    else:
+        st.info("Unable to generate leaderboard. Some stocks may have missing data.")
+
 
 # Plot normalized prices
 with right_cell:
