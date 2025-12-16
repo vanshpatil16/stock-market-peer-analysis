@@ -1305,6 +1305,18 @@ if len(tickers) <= 1:
 NUM_COLS = 4
 cols = st.columns(NUM_COLS)
 
+# Color palette: orange, dark blue, green, and other complementary colors
+color_palette = [
+    "#FF6B35",  # Orange
+    "#1E3A8A",  # Dark Blue
+    "#10B981",  # Green
+    "#F59E0B",  # Amber/Orange-Yellow
+    "#3B82F6",  # Blue
+    "#8B5CF6",  # Purple
+    "#EC4899",  # Pink
+    "#14B8A6",  # Teal
+]
+
 for i, ticker in enumerate(tickers):
     # Skip if ticker doesn't exist in normalized data or has no valid data
     if ticker not in normalized.columns or normalized[ticker].isna().all():
@@ -1317,6 +1329,10 @@ for i, ticker in enumerate(tickers):
         continue
     peer_avg = peers.mean(axis=1)
 
+    # Select color for this stock (rotate through palette)
+    stock_color = color_palette[i % len(color_palette)]
+    peer_color = "#6B7280"  # Gray for peer average
+
     # Create DataFrame with peer average.
     plot_data = pd.DataFrame(
         {
@@ -1328,14 +1344,17 @@ for i, ticker in enumerate(tickers):
 
     chart = (
         alt.Chart(plot_data)
-        .mark_line()
+        .mark_line(strokeWidth=2.5)
         .encode(
             alt.X("Date:T"),
             alt.Y("Price:Q").scale(zero=False),
             alt.Color(
                 "Series:N",
-                scale=alt.Scale(domain=[ticker, "Peer average"], range=["red", "gray"]),
-                legend=alt.Legend(orient="bottom"),
+                scale=alt.Scale(
+                    domain=[ticker, "Peer average"], 
+                    range=[stock_color, peer_color]
+                ),
+                legend=alt.Legend(orient="bottom", title="Series"),
             ),
             alt.Tooltip(["Date", "Series", "Price"]),
         )
@@ -1346,7 +1365,7 @@ for i, ticker in enumerate(tickers):
     cell.write("")
     cell.altair_chart(chart, use_container_width=True)
 
-    # Create Delta chart
+    # Create Delta chart with matching color
     plot_data = pd.DataFrame(
         {
             "Date": normalized.index,
@@ -1356,10 +1375,15 @@ for i, ticker in enumerate(tickers):
 
     chart = (
         alt.Chart(plot_data)
-        .mark_area()
+        .mark_area(
+            color=stock_color,
+            opacity=0.6,
+            interpolate='monotone'
+        )
         .encode(
             alt.X("Date:T"),
             alt.Y("Delta:Q").scale(zero=False),
+            alt.Tooltip(["Date", "Delta"]),
         )
         .properties(title=f"{ticker} minus peer average", height=300)
     )
