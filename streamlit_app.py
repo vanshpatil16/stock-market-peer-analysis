@@ -14,9 +14,9 @@ st.set_page_config(
 )
 
 """
-# :material/query_stats: Indian Stock Peer Analysis
+# :material/query_stats: Market Analysis Dashboard
 
-Easily compare Indian stocks (NSE/BSE) against others in their peer group.
+Compare stocks, commodities, and bonds to track market trends and performance.
 """
 
 # Display marquee with all stocks news at the top (after functions are defined below)
@@ -273,6 +273,128 @@ STOCKS = [
 
 DEFAULT_STOCKS = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS"]
 
+# Commodities list (using Yahoo Finance symbols)
+COMMODITIES = [
+    # Precious Metals
+    "GC=F",      # Gold Futures
+    "SI=F",      # Silver Futures
+    "PL=F",      # Platinum Futures
+    "PA=F",      # Palladium Futures
+    # Energy
+    "CL=F",      # Crude Oil (WTI)
+    "BZ=F",      # Brent Crude
+    "NG=F",      # Natural Gas
+    "RB=F",      # RBOB Gasoline
+    "HO=F",      # Heating Oil
+    # Agricultural
+    "ZC=F",      # Corn
+    "ZS=F",      # Soybeans
+    "ZW=F",      # Wheat
+    "KC=F",      # Coffee
+    "CC=F",      # Cocoa
+    "CT=F",      # Cotton
+    "SB=F",      # Sugar
+    # Metals
+    "HG=F",      # Copper
+    "ZI=F",      # Zinc
+]
+
+# Commodity name mapping for user-friendly display
+COMMODITY_NAMES = {
+    "GC=F": "Gold",
+    "SI=F": "Silver",
+    "PL=F": "Platinum",
+    "PA=F": "Palladium",
+    "CL=F": "Crude Oil (WTI)",
+    "BZ=F": "Brent Crude",
+    "NG=F": "Natural Gas",
+    "RB=F": "Gasoline",
+    "HO=F": "Heating Oil",
+    "ZC=F": "Corn",
+    "ZS=F": "Soybeans",
+    "ZW=F": "Wheat",
+    "KC=F": "Coffee",
+    "CC=F": "Cocoa",
+    "CT=F": "Cotton",
+    "SB=F": "Sugar",
+    "HG=F": "Copper",
+    "ZI=F": "Zinc",
+}
+
+DEFAULT_COMMODITIES = ["GC=F", "CL=F", "SI=F", "NG=F", "ZC=F"]
+
+# Bonds list (using Yahoo Finance symbols)
+BONDS = [
+    # US Treasury Bonds
+    "^TNX",      # 10-Year Treasury Yield
+    "^IRX",      # 13 Week Treasury Bill
+    "^FVX",      # 5-Year Treasury Yield
+    "^TYX",      # 30-Year Treasury Yield
+    # Indian ETFs (as bond alternatives/proxies)
+    "GOLDBEES.NS",  # Gold ETF
+    "SILVER.NS",    # Silver ETF
+    "LIQUIDBEES.NS", # Liquid ETF
+]
+
+# Bond name mapping for user-friendly display
+BOND_NAMES = {
+    "^TNX": "10-Year Treasury Yield",
+    "^IRX": "13 Week Treasury Bill",
+    "^FVX": "5-Year Treasury Yield",
+    "^TYX": "30-Year Treasury Yield",
+    "GOLDBEES.NS": "Gold ETF",
+    "SILVER.NS": "Silver ETF",
+    "LIQUIDBEES.NS": "Liquid ETF",
+}
+
+DEFAULT_BONDS = ["^TNX", "^IRX", "^FVX", "^TYX"]
+
+# Mutual Funds list (Indian ETFs - only verified working tickers)
+# Note: Many ETFs are not available on Yahoo Finance
+# Only including tickers that are confirmed to work
+MUTUAL_FUNDS = [
+    # Large Cap / Broad Market ETFs
+    "NIFTYBEES.NS",       # Nifty 50 ETF (Nifty BeES)
+    "JUNIORBEES.NS",      # Nifty Next 50 ETF
+    
+    # Mid Cap ETFs
+    "MIDCAPBEES.NS",      # Mid-cap ETF
+    
+    # Sectoral ETFs
+    "BANKBEES.NS",        # Banking ETF
+    "ITBEES.NS",          # IT ETF
+    "PHARMABEES.NS",      # Pharma ETF
+    
+    # Gold ETF
+    "GOLDBEES.NS",        # Gold ETF
+    
+    # Debt/Liquid ETFs
+    "LIQUIDBEES.NS",      # Liquid ETF
+]
+
+# Mutual Fund name mapping for user-friendly display
+MUTUAL_FUND_NAMES = {
+    "NIFTYBEES.NS": "Nifty 50 ETF (Nifty BeES)",
+    "JUNIORBEES.NS": "Nifty Next 50 ETF",
+    "MIDCAPBEES.NS": "Mid-cap ETF",
+    "BANKBEES.NS": "Banking ETF",
+    "ITBEES.NS": "IT ETF",
+    "PHARMABEES.NS": "Pharma ETF",
+    "GOLDBEES.NS": "Gold ETF",
+    "LIQUIDBEES.NS": "Liquid ETF",
+}
+
+# Mutual Fund categories
+MUTUAL_FUND_CATEGORIES = {
+    "Large Cap / Broad Market": ["NIFTYBEES.NS", "JUNIORBEES.NS"],
+    "Mid Cap": ["MIDCAPBEES.NS"],
+    "Sectoral ETFs": ["BANKBEES.NS", "ITBEES.NS", "PHARMABEES.NS"],
+    "Commodity ETFs": ["GOLDBEES.NS"],
+    "Debt / Liquid": ["LIQUIDBEES.NS"],
+}
+
+DEFAULT_MUTUAL_FUNDS = ["NIFTYBEES.NS", "BANKBEES.NS", "ITBEES.NS"]
+
 
 # Helper functions for news processing
 def is_valid_article(article: Dict) -> bool:
@@ -405,13 +527,256 @@ def load_all_stocks_news() -> List[Dict]:
     return unique_news[:100]  # Limit to 100 most recent articles
 
 
-# Display marquee with all stocks news at the top
+# Load marquee news (will be displayed after asset_type is defined)
 try:
-    all_news = load_all_stocks_news()
-    if all_news:
+    _marquee_news = load_all_stocks_news()
+except Exception:
+    _marquee_news = []
+
+
+def stocks_to_str(stocks):
+    return ",".join(stocks)
+
+
+def get_display_name(ticker: str, asset_type: str) -> str:
+    """Get user-friendly display name for a ticker."""
+    if asset_type == "Commodities":
+        return COMMODITY_NAMES.get(ticker, ticker)
+    elif asset_type == "Bonds":
+        return BOND_NAMES.get(ticker, ticker)
+    elif asset_type == "Mutual Funds":
+        return MUTUAL_FUND_NAMES.get(ticker, ticker)
+    else:
+        return ticker
+
+
+# Asset type selector (Tabs)
+asset_type = st.radio(
+    "Select Asset Type",
+    ["Stocks", "Commodities", "Bonds", "Mutual Funds"],
+    horizontal=True,
+    key="asset_type"
+)
+
+# Select appropriate list and defaults based on asset type
+if asset_type == "Commodities":
+    ASSET_LIST = COMMODITIES
+    DEFAULT_ASSETS = DEFAULT_COMMODITIES
+    asset_label = "Commodity"
+elif asset_type == "Bonds":
+    ASSET_LIST = BONDS
+    DEFAULT_ASSETS = DEFAULT_BONDS
+    asset_label = "Bond"
+elif asset_type == "Mutual Funds":
+    ASSET_LIST = MUTUAL_FUNDS
+    DEFAULT_ASSETS = DEFAULT_MUTUAL_FUNDS
+    asset_label = "Mutual Fund"
+else:  # Stocks
+    ASSET_LIST = STOCKS
+    DEFAULT_ASSETS = DEFAULT_STOCKS
+    asset_label = "Stock"
+
+# Update session state key based on asset type
+session_key = f"{asset_type.lower()}_tickers_input"
+
+if session_key not in st.session_state:
+    st.session_state[session_key] = st.query_params.get(
+        f"{asset_type.lower()}_stocks", stocks_to_str(DEFAULT_ASSETS)
+    ).split(",")
+
+
+# Callback to update query param when input changes
+def update_query_param():
+    asset_type_val = st.session_state.get("asset_type", "Stocks")
+    session_key_val = f"{asset_type_val.lower()}_tickers_input"
+    
+    if st.session_state.get(session_key_val):
+        st.query_params[f"{asset_type_val.lower()}_stocks"] = stocks_to_str(st.session_state[session_key_val])
+    else:
+        st.query_params.pop(f"{asset_type_val.lower()}_stocks", None)
+
+
+top_left_cell = cols[0].container(
+    border=True, height="stretch", vertical_alignment="center"
+)
+
+with top_left_cell:
+    # Create formatted options for commodities and bonds with friendly names
+    if asset_type == "Commodities":
+        # Format options as "GC=F - Gold"
+        formatted_options = {}
+        options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
+        for symbol in options_list:
+            friendly_name = COMMODITY_NAMES.get(symbol, symbol)
+            formatted_options[f"{symbol} - {friendly_name}"] = symbol
+        
+        # Display info about commodity symbols
+        with st.expander("ℹ️ What do these symbols mean?", expanded=False):
+            st.markdown("""
+            **Commodity Symbols Explained:**
+            - **GC=F** = Gold Futures
+            - **CL=F** = Crude Oil (WTI)
+            - **SI=F** = Silver Futures
+            - **NG=F** = Natural Gas
+            - **ZC=F** = Corn
+            - **KC=F** = Coffee
+            - **BZ=F** = Brent Crude
+            - **HG=F** = Copper
+            - **ZS=F** = Soybeans
+            - **ZW=F** = Wheat
+            
+            *All symbols ending with "=F" are futures contracts traded on commodity exchanges.*
+            """)
+        
+        # Multiselect with formatted options
+        selected_display = [f"{t} - {COMMODITY_NAMES.get(t, t)}" for t in st.session_state[session_key] if t in ASSET_LIST]
+        selected_display.extend([t for t in st.session_state[session_key] if t not in ASSET_LIST])
+        
+        selected_options = st.multiselect(
+            f"{asset_label} tickers",
+            options=list(formatted_options.keys()),
+            default=selected_display,
+            placeholder=f"Choose {asset_label.lower()}s to compare. Example: GC=F - Gold",
+            accept_new_options=True,
+            key=f"{asset_type}_selector"
+        )
+        
+        # Map back to actual symbols
+        tickers = []
+        for option in selected_options:
+            if option in formatted_options:
+                tickers.append(formatted_options[option])
+            else:
+                # User entered a custom option
+                tickers.append(option.split(" - ")[0] if " - " in option else option)
+        
+    elif asset_type == "Bonds":
+        # Format options as "^TNX - 10-Year Treasury Yield"
+        formatted_options = {}
+        options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
+        for symbol in options_list:
+            friendly_name = BOND_NAMES.get(symbol, symbol)
+            formatted_options[f"{symbol} - {friendly_name}"] = symbol
+        
+        # Display info about bond symbols
+        with st.expander("ℹ️ What do these symbols mean?", expanded=False):
+            st.markdown("""
+            **Bond Symbols Explained:**
+            - **^TNX** = 10-Year US Treasury Yield
+            - **^IRX** = 13 Week US Treasury Bill
+            - **^FVX** = 5-Year US Treasury Yield
+            - **^TYX** = 30-Year US Treasury Yield
+            
+            *Symbols starting with "^" are indices. Higher yields typically indicate higher interest rates.*
+            """)
+        
+        # Multiselect with formatted options
+        selected_display = [f"{t} - {BOND_NAMES.get(t, t)}" for t in st.session_state[session_key] if t in ASSET_LIST]
+        selected_display.extend([t for t in st.session_state[session_key] if t not in ASSET_LIST])
+        
+        selected_options = st.multiselect(
+            f"{asset_label} tickers",
+            options=list(formatted_options.keys()),
+            default=selected_display,
+            placeholder=f"Choose {asset_label.lower()}s to compare. Example: ^TNX - 10-Year Treasury Yield",
+            accept_new_options=True,
+            key=f"{asset_type}_selector"
+        )
+        
+        # Map back to actual symbols
+        tickers = []
+        for option in selected_options:
+            if option in formatted_options:
+                tickers.append(formatted_options[option])
+            else:
+                # User entered a custom option
+                tickers.append(option.split(" - ")[0] if " - " in option else option)
+    elif asset_type == "Mutual Funds":
+        # Format options as "HDFCEQUITY.NS - HDFC Equity Fund"
+        formatted_options = {}
+        options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
+        for symbol in options_list:
+            friendly_name = MUTUAL_FUND_NAMES.get(symbol, symbol)
+            formatted_options[f"{symbol} - {friendly_name}"] = symbol
+        
+        # Display info about mutual funds
+        with st.expander("ℹ️ About Mutual Funds & ETFs", expanded=False):
+            st.markdown("""
+            **ETF Categories:**
+            - **Large Cap / Broad Market**: Track major indices (Nifty 50, Nifty Next 50, Sensex)
+            - **Mid & Small Cap**: Focus on mid and small-cap companies
+            - **Sectoral ETFs**: Track specific sectors (Banking, IT, Pharma, Energy, FMCG, etc.)
+            - **Thematic ETFs**: Track themes (Consumption, Infrastructure)
+            - **Commodity ETFs**: Gold, Silver ETFs
+            - **Debt / Liquid**: Liquid ETFs for short-term investments
+            
+            **Note**: 
+            - ETFs trade like stocks and have real-time prices during market hours
+            - Many traditional mutual funds are not available on Yahoo Finance
+            - This list focuses on ETFs which are more reliably available
+            - Historical data shows end-of-day prices
+            """)
+        
+        # Category filter (optional enhancement)
+        selected_category = st.selectbox(
+            "Filter by Category (Optional)",
+            ["All Categories"] + list(MUTUAL_FUND_CATEGORIES.keys()),
+            key="mf_category_filter"
+        )
+        
+        if selected_category != "All Categories":
+            category_funds = MUTUAL_FUND_CATEGORIES.get(selected_category, [])
+            options_list = [f for f in options_list if f in category_funds]
+            formatted_options = {k: v for k, v in formatted_options.items() if v in category_funds}
+        
+        # Multiselect with formatted options
+        # Filter out invalid tickers from session state that don't exist in current ASSET_LIST
+        valid_session_tickers = [t for t in st.session_state[session_key] if t in ASSET_LIST]
+        
+        # Build selected_display with only valid tickers that exist in formatted_options
+        selected_display = []
+        for t in valid_session_tickers:
+            formatted_option = f"{t} - {MUTUAL_FUND_NAMES.get(t, t)}"
+            if formatted_option in formatted_options:
+                selected_display.append(formatted_option)
+        
+        selected_options = st.multiselect(
+            f"{asset_label} tickers",
+            options=list(formatted_options.keys()),
+            default=selected_display,
+            placeholder=f"Choose {asset_label.lower()}s to compare. Example: NIFTYBEES.NS - Nifty 50 ETF",
+            accept_new_options=True,
+            key=f"{asset_type}_selector"
+        )
+        
+        # Map back to actual symbols
+        tickers = []
+        for option in selected_options:
+            if option in formatted_options:
+                tickers.append(formatted_options[option])
+            else:
+                tickers.append(option.split(" - ")[0] if " - " in option else option)
+    else:
+        # Stocks - no formatting needed
+        example_placeholder = "RELIANCE.NS"
+        tickers = st.multiselect(
+            f"{asset_label} tickers",
+            options=sorted(set(ASSET_LIST) | set(st.session_state[session_key])),
+            default=st.session_state[session_key],
+            placeholder=f"Choose {asset_label.lower()}s to compare. Example: {example_placeholder}",
+            accept_new_options=True,
+            key=f"{asset_type}_selector"
+        )
+    
+    # Update session state
+    st.session_state[session_key] = tickers
+
+# Display marquee with all stocks news at the top (only for stocks)
+if asset_type == "Stocks" and _marquee_news:
+    try:
         # Create marquee HTML
         news_items = []
-        for article in all_news:
+        for article in _marquee_news:
             title = article.get('title', '').strip()
             ticker = article.get('ticker', '')
             link = article.get('link', '#')
@@ -439,60 +804,28 @@ try:
                 f'({date_str})</span>'
             )
         
-        marquee_html = f"""
-        <div style="background: linear-gradient(90deg, #1e3a5f 0%, #2d4a6e 100%); 
-                    padding: 12px 0; 
-                    border-radius: 5px; 
-                    margin-bottom: 20px;
-                    overflow: hidden;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <div style="display: flex; align-items: center;">
-                <span style="color: #ffd700; font-weight: bold; margin-right: 15px; white-space: nowrap; padding-left: 10px;">
-                    📊 Market News:
-                </span>
-                <marquee behavior="scroll" direction="left" scrollamount="3" style="color: white; font-size: 14px;">
-                    {' • '.join(news_items)}
-                </marquee>
+        if news_items:
+            marquee_html = f"""
+            <div style="background: linear-gradient(90deg, #1e3a5f 0%, #2d4a6e 100%); 
+                        padding: 12px 0; 
+                        border-radius: 5px; 
+                        margin-bottom: 20px;
+                        overflow: hidden;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <div style="display: flex; align-items: center;">
+                    <span style="color: #ffd700; font-weight: bold; margin-right: 15px; white-space: nowrap; padding-left: 10px;">
+                        📊 Market News:
+                    </span>
+                    <marquee behavior="scroll" direction="left" scrollamount="3" style="color: white; font-size: 14px;">
+                        {' • '.join(news_items)}
+                    </marquee>
+                </div>
             </div>
-        </div>
-        """
-        st.markdown(marquee_html, unsafe_allow_html=True)
-except Exception:
-    # Silently fail if marquee news can't be loaded
-    pass
-
-
-def stocks_to_str(stocks):
-    return ",".join(stocks)
-
-
-if "tickers_input" not in st.session_state:
-    st.session_state.tickers_input = st.query_params.get(
-        "stocks", stocks_to_str(DEFAULT_STOCKS)
-    ).split(",")
-
-
-# Callback to update query param when input changes
-def update_query_param():
-    if st.session_state.tickers_input:
-        st.query_params["stocks"] = stocks_to_str(st.session_state.tickers_input)
-    else:
-        st.query_params.pop("stocks", None)
-
-
-top_left_cell = cols[0].container(
-    border=True, height="stretch", vertical_alignment="center"
-)
-
-with top_left_cell:
-    # Selectbox for stock tickers
-    tickers = st.multiselect(
-        "Stock tickers",
-        options=sorted(set(STOCKS) | set(st.session_state.tickers_input)),
-        default=st.session_state.tickers_input,
-        placeholder="Choose stocks to compare. Example: RELIANCE.NS or TCS.NS",
-        accept_new_options=True,
-    )
+            """
+            st.markdown(marquee_html, unsafe_allow_html=True)
+    except Exception:
+        # Silently fail if marquee news can't be displayed
+        pass
 
 # Time horizon selector
 horizon_map = {
@@ -517,13 +850,13 @@ tickers = [t.upper() for t in tickers]
 
 # Update query param when text input changes
 if tickers:
-    st.query_params["stocks"] = stocks_to_str(tickers)
+    st.query_params[f"{asset_type.lower()}_stocks"] = stocks_to_str(tickers)
 else:
     # Clear the param if input is empty
-    st.query_params.pop("stocks", None)
+    st.query_params.pop(f"{asset_type.lower()}_stocks", None)
 
 if not tickers:
-    top_left_cell.info("Pick some stocks to compare", icon=":material/info:")
+    top_left_cell.info(f"Pick some {asset_label.lower()}s to compare", icon=":material/info:")
     st.stop()
 
 
@@ -773,56 +1106,67 @@ else:
     with bottom_left_cell:
         st.warning("Unable to calculate performance metrics. Some stocks may have missing data.")
 
-# Stock Performance Leaderboard
+# Performance Leaderboard
 st.markdown("---")
 leaderboard_container = st.container(border=True)
 
 with leaderboard_container:
     st.markdown("## Performance Leaderboard")
     
-    # Dropdown to select leaderboard type
-    leaderboard_type = st.selectbox(
-        "Select Leaderboard Type",
-        ["Current Selected Stocks", "Top Indian Stocks"],
-        key="leaderboard_type"
-    )
-    
-    # Define top Indian stocks (major large-cap stocks)
-    top_indian_stocks = [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-        "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
-        "LT.NS", "HCLTECH.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS",
-        "WIPRO.NS", "NESTLEIND.NS", "SUNPHARMA.NS", "BAJFINANCE.NS", "TITAN.NS"
-    ]
-    
-    # Determine which stocks to show in leaderboard
-    if leaderboard_type == "Top Indian Stocks":
-        stocks_for_leaderboard = top_indian_stocks
-        st.caption(f"Ranking of top {len(top_indian_stocks)} Indian stocks by their performance over the selected time period.")
+    # Dropdown to select leaderboard type (only for stocks)
+    if asset_type == "Stocks":
+        leaderboard_type = st.selectbox(
+            "Select Leaderboard Type",
+            ["Current Selected Stocks", "Top Indian Stocks"],
+            key="leaderboard_type"
+        )
         
-        # Load data for top Indian stocks
-        try:
-            top_stocks_data = load_data(stocks_for_leaderboard, horizon_map[horizon])
+        # Define top Indian stocks (major large-cap stocks)
+        top_indian_stocks = [
+            "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+            "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
+            "LT.NS", "HCLTECH.NS", "AXISBANK.NS", "ASIANPAINT.NS", "MARUTI.NS",
+            "WIPRO.NS", "NESTLEIND.NS", "SUNPHARMA.NS", "BAJFINANCE.NS", "TITAN.NS"
+        ]
+        
+        # Determine which stocks to show in leaderboard
+        if leaderboard_type == "Top Indian Stocks":
+            assets_for_leaderboard = top_indian_stocks
+            st.caption(f"Ranking of top {len(top_indian_stocks)} Indian stocks by their performance over the selected time period.")
             
-            # Normalize prices
-            top_stocks_normalized = top_stocks_data.div(top_stocks_data.iloc[0].replace(0, pd.NA))
-            top_stocks_normalized = top_stocks_normalized.replace([float('inf'), float('-inf')], pd.NA)
-            
-            # Get latest normalized values for top stocks
-            top_stocks_norm_values = {}
-            for ticker in stocks_for_leaderboard:
-                if ticker in top_stocks_normalized.columns:
-                    latest_value = top_stocks_normalized[ticker].iat[-1]
-                    if pd.notna(latest_value) and pd.notna(top_stocks_normalized[ticker].iloc[0]):
-                        top_stocks_norm_values[latest_value] = ticker
-            
-            leaderboard_norm_values = top_stocks_norm_values
-        except Exception as e:
-            st.error(f"Error loading data for top Indian stocks: {str(e)}")
-            leaderboard_norm_values = latest_norm_values if latest_norm_values else {}
+            # Load data for top Indian stocks
+            try:
+                top_stocks_data = load_data(assets_for_leaderboard, horizon_map[horizon])
+                
+                # Normalize prices
+                top_stocks_normalized = top_stocks_data.div(top_stocks_data.iloc[0].replace(0, pd.NA))
+                top_stocks_normalized = top_stocks_normalized.replace([float('inf'), float('-inf')], pd.NA)
+                
+                # Get latest normalized values for top stocks
+                top_stocks_norm_values = {}
+                for ticker in assets_for_leaderboard:
+                    if ticker in top_stocks_normalized.columns:
+                        latest_value = top_stocks_normalized[ticker].iat[-1]
+                        if pd.notna(latest_value) and pd.notna(top_stocks_normalized[ticker].iloc[0]):
+                            top_stocks_norm_values[latest_value] = ticker
+                
+                leaderboard_norm_values = top_stocks_norm_values
+            except Exception as e:
+                st.error(f"Error loading data for top Indian stocks: {str(e)}")
+                leaderboard_norm_values = latest_norm_values if latest_norm_values else {}
+        else:
+            assets_for_leaderboard = tickers
+            st.caption("Ranking of all selected stocks by their performance over the selected time period.")
+            leaderboard_norm_values = latest_norm_values
     else:
-        stocks_for_leaderboard = tickers
-        st.caption("Ranking of all selected stocks by their performance over the selected time period.")
+        # For commodities, bonds, and mutual funds, just use selected items
+        assets_for_leaderboard = tickers
+        if asset_type == "Commodities":
+            st.caption("Ranking of selected commodities by their performance over the selected time period.")
+        elif asset_type == "Bonds":
+            st.caption("Ranking of selected bonds by their performance over the selected time period.")
+        elif asset_type == "Mutual Funds":
+            st.caption("Ranking of selected mutual funds by their performance over the selected time period.")
         leaderboard_norm_values = latest_norm_values
     
     if leaderboard_norm_values and len(leaderboard_norm_values) > 1:
@@ -831,8 +1175,11 @@ with leaderboard_container:
         for norm_value, ticker in leaderboard_norm_values.items():
             if pd.notna(norm_value):
                 performance_pct = (norm_value - 1.0) * 100
+                # Use friendly name for display
+                display_name = get_display_name(ticker, asset_type)
                 leaderboard_data.append({
-                    'Stock': ticker,
+                    'Asset': f"{ticker} - {display_name}" if asset_type in ["Commodities", "Bonds", "Mutual Funds"] and display_name != ticker else ticker,
+                    'Asset_Original': ticker,  # Keep original for sorting/filtering
                     'Performance %': round(performance_pct, 2),
                     'Normalized Value': round(norm_value, 4)
                 })
@@ -858,10 +1205,10 @@ with leaderboard_container:
             cornerRadiusBottomRight=5
         ).encode(
             y=alt.Y(
-                'Stock:N',
+                'Asset:N',
                 sort=alt.EncodingSortField(field='Performance %', order='descending'),
-                title='Stock',
-                axis=alt.Axis(labelLimit=200)
+                title=asset_label,
+                axis=alt.Axis(labelLimit=300)
             ),
             x=alt.X(
                 'Performance %:Q',
@@ -875,13 +1222,13 @@ with leaderboard_container:
             ),
             tooltip=[
                 alt.Tooltip('Rank:O', title='Rank'),
-                alt.Tooltip('Stock:N', title='Stock'),
+                alt.Tooltip('Asset:N', title=asset_label),
                 alt.Tooltip('Performance %:Q', title='Performance', format='.2f'),
                 alt.Tooltip('Normalized Value:Q', title='Normalized Value', format='.4f')
             ]
         ).properties(
             height=max(400, len(leaderboard_df) * 40),
-            title='Stock Performance Ranking'
+            title=f'{asset_label} Performance Ranking'
         )
         
         # Add text labels on bars
@@ -917,7 +1264,7 @@ with leaderboard_container:
             display_df['Normalized Value'] = display_df['Normalized Value'].apply(lambda x: f"{x:.4f}")
             display_df = display_df.rename(columns={
                 'Rank': 'Rank',
-                'Stock': 'Stock',
+                'Asset': asset_label,
                 'Performance %': 'Performance',
                 'Normalized Value': 'Normalized Value'
             })
@@ -927,9 +1274,9 @@ with leaderboard_container:
                 hide_index=True
             )
     elif leaderboard_norm_values and len(leaderboard_norm_values) == 1:
-        st.info("Select at least 2 stocks to view the leaderboard.")
+        st.info(f"Select at least 2 {asset_label.lower()}s to view the leaderboard.")
     else:
-        st.info("Unable to generate leaderboard. Some stocks may have missing data.")
+        st.info(f"Unable to generate leaderboard. Some {asset_label.lower()}s may have missing data.")
 
 
 # Plot normalized prices
@@ -954,9 +1301,9 @@ with right_cell:
 
 # Plot individual stock vs peer average
 """
-## Individual stocks vs peer average
+## Individual assets vs peer average
 
-For the analysis below, the "peer average" when analyzing stock X always
+For the analysis below, the "peer average" when analyzing asset X always
 excludes X itself.
 """
 
@@ -1068,187 +1415,193 @@ data
 ## 📰 Latest News & Market Updates
 """
 
-# Display color legend for news sentiment
-legend_col1, legend_col2, legend_col3 = st.columns(3)
-with legend_col1:
-    st.markdown(
-        """
-        <div style="background: #1a3a1a; border-left: 4px solid #00cc00; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #00cc00; font-size: 20px; font-weight: bold;">●</span>
-                <div>
-                    <strong style="color: #00cc00;">Green - Growth/Positive</strong>
-                    <p style="color: #aaa; font-size: 12px; margin: 4px 0 0 0;">Positive news, growth, profits, gains, upgrades</p>
+# Only show news section for stocks
+if asset_type == "Stocks":
+    # Display color legend for news sentiment
+    legend_col1, legend_col2, legend_col3 = st.columns(3)
+    with legend_col1:
+        st.markdown(
+            """
+            <div style="background: #1a3a1a; border-left: 4px solid #00cc00; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: #00cc00; font-size: 20px; font-weight: bold;">●</span>
+                    <div>
+                        <strong style="color: #00cc00;">Green - Growth/Positive</strong>
+                        <p style="color: #aaa; font-size: 12px; margin: 4px 0 0 0;">Positive news, growth, profits, gains, upgrades</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-with legend_col2:
-    st.markdown(
-        """
-        <div style="background: #3a1a1a; border-left: 4px solid #ff4444; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #ff4444; font-size: 20px; font-weight: bold;">●</span>
-                <div>
-                    <strong style="color: #ff4444;">Red - Depreciation/Negative</strong>
-                    <p style="color: #aaa; font-size: 12px; margin: 4px 0 0 0;">Negative news, losses, declines, downgrades</p>
+            """,
+            unsafe_allow_html=True
+        )
+    with legend_col2:
+        st.markdown(
+            """
+            <div style="background: #3a1a1a; border-left: 4px solid #ff4444; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: #ff4444; font-size: 20px; font-weight: bold;">●</span>
+                    <div>
+                        <strong style="color: #ff4444;">Red - Depreciation/Negative</strong>
+                        <p style="color: #aaa; font-size: 12px; margin: 4px 0 0 0;">Negative news, losses, declines, downgrades</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-with legend_col3:
-    st.markdown(
-        """
-        <div style="background: #1a1a3a; border-left: 4px solid #4A90E2; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: #4A90E2; font-size: 20px; font-weight: bold;">●</span>
-                <div>
-                    <strong style="color: #4A90E2;">Blue - General/Neutral</strong>
-                    <p style="color: #aaa; font-size: 12px; margin: 4px 0 0 0;">General news, updates, neutral information</p>
+            """,
+            unsafe_allow_html=True
+        )
+    with legend_col3:
+        st.markdown(
+            """
+            <div style="background: #1a1a3a; border-left: 4px solid #4A90E2; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="color: #4A90E2; font-size: 20px; font-weight: bold;">●</span>
+                    <div>
+                        <strong style="color: #4A90E2;">Blue - General/Neutral</strong>
+                        <p style="color: #aaa; font-size: 12px; margin: 4px 0 0 0;">General news, updates, neutral information</p>
+                    </div>
                 </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            """,
+            unsafe_allow_html=True
+        )
 
-# Load and display news if at least one stock is selected
-if tickers:
-    try:
-        with st.spinner("Loading news articles..."):
-            news_data = load_news(tickers)
-            
-            # If news_data is empty, try loading directly (bypass cache)
-            if not news_data or all(len(articles) == 0 for articles in news_data.values()):
-                # Try loading without cache as fallback
-                news_data = load_news_multi_source(tickers)
-        
-        # Collect all articles from all selected stocks
-        all_articles = []
-        for ticker, articles in news_data.items():
-            if articles:  # Check if articles list exists and is not empty
-                for article in articles:
-                    if is_valid_article(article):
-                        article['source_ticker'] = ticker
-                        all_articles.append(article)
-        
-        if all_articles:
-            # Sort by sentiment (green first, then red, then blue), then by date (newest first)
-            def get_sentiment_priority(article):
-                title = article.get('title', '').strip()
-                summary = article.get('summary', '').strip()
-                is_growth = is_growth_related(title, summary)
-                is_depreciation = is_depreciation_related(title, summary)
+    # Load and display news if at least one stock is selected
+    if tickers:
+        try:
+            with st.spinner("Loading news articles..."):
+                news_data = load_news(tickers)
                 
-                # Priority: 0 = green (growth), 1 = red (depreciation), 2 = blue (general)
-                if is_growth:
-                    return 0
-                elif is_depreciation:
-                    return 1
-                else:
-                    return 2
+                # If news_data is empty, try loading directly (bypass cache)
+                if not news_data or all(len(articles) == 0 for articles in news_data.values()):
+                    # Try loading without cache as fallback
+                    news_data = load_news_multi_source(tickers)
             
-            # Sort by sentiment priority first, then by date (newest first)
-            all_articles.sort(key=lambda x: (
-                get_sentiment_priority(x),
-                -x.get('providerPublishTime', 0)  # Negative for descending order (newest first)
-            ))
+            # Collect all articles from all selected stocks
+            all_articles = []
+            for ticker, articles in news_data.items():
+                if articles:  # Check if articles list exists and is not empty
+                    for article in articles:
+                        if is_valid_article(article):
+                            article['source_ticker'] = ticker
+                            all_articles.append(article)
             
-            # Display in flashcard grid (3 columns)
-            st.caption(f"Showing {len(all_articles)} news articles • Last updated: {datetime.now().strftime('%H:%M:%S')}")
-            
-            # Display articles in rows of 3 cards
-            num_cols = 3
-            for i in range(0, len(all_articles), num_cols):
-                cols = st.columns(num_cols)
-                batch = all_articles[i:i+num_cols]
-                
-                for col_idx, article in enumerate(batch):
-                    if col_idx >= len(cols):
-                        break
+            if all_articles:
+                # Sort by sentiment (green first, then red, then blue), then by date (newest first)
+                def get_sentiment_priority(article):
+                    title = article.get('title', '').strip()
+                    summary = article.get('summary', '').strip()
+                    is_growth = is_growth_related(title, summary)
+                    is_depreciation = is_depreciation_related(title, summary)
                     
-                    with cols[col_idx]:
-                        title = article.get('title', '').strip()
-                        link = article.get('link', '#')
-                        publisher = article.get('publisher', 'Unknown')
-                        publish_time = article.get('providerPublishTime', 0)
-                        summary = article.get('summary', '').strip()
-                        ticker = article.get('source_ticker', article.get('ticker', ''))
+                    # Priority: 0 = green (growth), 1 = red (depreciation), 2 = blue (general)
+                    if is_growth:
+                        return 0
+                    elif is_depreciation:
+                        return 1
+                    else:
+                        return 2
+                
+                # Sort by sentiment priority first, then by date (newest first)
+                all_articles.sort(key=lambda x: (
+                    get_sentiment_priority(x),
+                    -x.get('providerPublishTime', 0)  # Negative for descending order (newest first)
+                ))
+                
+                # Display in flashcard grid (3 columns)
+                st.caption(f"Showing {len(all_articles)} news articles • Last updated: {datetime.now().strftime('%H:%M:%S')}")
+                
+                # Display articles in rows of 3 cards
+                num_cols = 3
+                for i in range(0, len(all_articles), num_cols):
+                    cols = st.columns(num_cols)
+                    batch = all_articles[i:i+num_cols]
+                    
+                    for col_idx, article in enumerate(batch):
+                        if col_idx >= len(cols):
+                            break
                         
-                        if not title:
-                            continue
-                        
-                        # Determine sentiment and color
-                        is_growth = is_growth_related(title, summary)
-                        is_depreciation = is_depreciation_related(title, summary)
-                        time_str = format_news_date(publish_time)
-                        
-                        # Color coding: green for growth, red for depreciation, blue for general
-                        if is_growth:
-                            ticker_color = "#00cc00"  # Green
-                        elif is_depreciation:
-                            ticker_color = "#ff4444"  # Red
-                        else:
-                            ticker_color = "#4A90E2"  # Blue
-                        
-                        # Create flashcard with dark theme styling (matching the image)
-                        # Truncate summary for display
-                        summary_display = summary[:150] + ('...' if len(summary) > 150 else '') if summary else ''
-                        
-                        # Escape HTML special characters to prevent XSS
-                        import html
-                        title_escaped = html.escape(title)
-                        summary_escaped = html.escape(summary_display)
-                        publisher_escaped = html.escape(publisher)
-                        ticker_escaped = html.escape(ticker)
-                        
-                        card_html = f"""
-                        <div style="
-                            background: #2a2a2a;
-                            border: 1px solid #3a3a3a;
-                            border-radius: 10px;
-                            padding: 20px;
-                            margin-bottom: 20px;
-                            height: 100%;
-                            display: flex;
-                            flex-direction: column;
-                            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
-                            transition: transform 0.2s;
-                        ">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                                <span style="color: {ticker_color}; font-weight: 700; font-size: 20px; letter-spacing: 0.5px;">{ticker_escaped}</span>
-                                <span style="color: #999; font-size: 13px; font-weight: 400;">{time_str}</span>
+                        with cols[col_idx]:
+                            title = article.get('title', '').strip()
+                            link = article.get('link', '#')
+                            publisher = article.get('publisher', 'Unknown')
+                            publish_time = article.get('providerPublishTime', 0)
+                            summary = article.get('summary', '').strip()
+                            ticker = article.get('source_ticker', article.get('ticker', ''))
+                            
+                            if not title:
+                                continue
+                            
+                            # Determine sentiment and color
+                            is_growth = is_growth_related(title, summary)
+                            is_depreciation = is_depreciation_related(title, summary)
+                            time_str = format_news_date(publish_time)
+                            
+                            # Color coding: green for growth, red for depreciation, blue for general
+                            if is_growth:
+                                ticker_color = "#00cc00"  # Green
+                            elif is_depreciation:
+                                ticker_color = "#ff4444"  # Red
+                            else:
+                                ticker_color = "#4A90E2"  # Blue
+                            
+                            # Create flashcard with dark theme styling (matching the image)
+                            # Truncate summary for display
+                            summary_display = summary[:150] + ('...' if len(summary) > 150 else '') if summary else ''
+                            
+                            # Escape HTML special characters to prevent XSS
+                            import html
+                            title_escaped = html.escape(title)
+                            summary_escaped = html.escape(summary_display)
+                            publisher_escaped = html.escape(publisher)
+                            ticker_escaped = html.escape(ticker)
+                            
+                            card_html = f"""
+                            <div style="
+                                background: #2a2a2a;
+                                border: 1px solid #3a3a3a;
+                                border-radius: 10px;
+                                padding: 20px;
+                                margin-bottom: 20px;
+                                height: 100%;
+                                display: flex;
+                                flex-direction: column;
+                                box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+                                transition: transform 0.2s;
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                    <span style="color: {ticker_color}; font-weight: 700; font-size: 20px; letter-spacing: 0.5px;">{ticker_escaped}</span>
+                                    <span style="color: #999; font-size: 13px; font-weight: 400;">{time_str}</span>
+                                </div>
+                                <a href="{link}" target="_blank" style="text-decoration: none; color: #fff; display: block; margin-bottom: 12px;">
+                                    <h3 style="color: #fff; font-size: 17px; font-weight: 700; margin: 0; line-height: 1.4; letter-spacing: -0.2px;">
+                                        {title_escaped}
+                                    </h3>
+                                </a>
+                                <p style="color: #bbb; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; flex-grow: 1; overflow: hidden;">
+                                    {summary_escaped}
+                                </p>
+                                <div style="color: #888; font-size: 12px; margin-top: auto; border-top: 1px solid #3a3a3a; padding-top: 12px;">
+                                    {publisher_escaped}
+                                </div>
                             </div>
-                            <a href="{link}" target="_blank" style="text-decoration: none; color: #fff; display: block; margin-bottom: 12px;">
-                                <h3 style="color: #fff; font-size: 17px; font-weight: 700; margin: 0; line-height: 1.4; letter-spacing: -0.2px;">
-                                    {title_escaped}
-                                </h3>
-                            </a>
-                            <p style="color: #bbb; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0; flex-grow: 1; overflow: hidden;">
-                                {summary_escaped}
-                            </p>
-                            <div style="color: #888; font-size: 12px; margin-top: auto; border-top: 1px solid #3a3a3a; padding-top: 12px;">
-                                {publisher_escaped}
-                            </div>
-                        </div>
-                        """
-                        st.markdown(card_html, unsafe_allow_html=True)
-        else:
-            # Show helpful message if no articles found
-            st.info("No news articles available for the selected stocks at this time.")
-            st.caption(f"Attempted to load news for: {', '.join(tickers)}")
-            st.caption("💡 Tip: Try selecting different stocks or check back later. News is fetched from multiple sources.")
-            
-    except Exception as e:
-        # More detailed error message for debugging
-        st.error(f"Error loading news: {str(e)}")
-        st.caption("If this persists, the news service may be temporarily unavailable. The app will continue to work for stock analysis.")
-        # Log the error for debugging (only visible in logs, not to user)
-        import traceback
-        st.code(traceback.format_exc(), language='python')
+                            """
+                            st.markdown(card_html, unsafe_allow_html=True)
+            else:
+                # Show helpful message if no articles found
+                st.info("No news articles available for the selected stocks at this time.")
+                st.caption(f"Attempted to load news for: {', '.join(tickers)}")
+                st.caption("💡 Tip: Try selecting different stocks or check back later. News is fetched from multiple sources.")
+        except Exception as e:
+            # More detailed error message for debugging
+            st.error(f"Error loading news: {str(e)}")
+            st.caption("If this persists, the news service may be temporarily unavailable. The app will continue to work for stock analysis.")
+            # Log the error for debugging (only visible in logs, not to user)
+            import traceback
+            st.code(traceback.format_exc(), language='python')
+    else:
+        st.info("Select at least one stock to view news articles.")
 else:
-    st.info("Select at least one stock to view news articles.")
+    if asset_type == "Mutual Funds":
+        st.info("📰 News is currently available only for stocks. Switch to 'Stocks' to view market news.")
+    else:
+        st.info("📰 News is currently available only for stocks. Switch to 'Stocks' to view market news.")

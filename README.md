@@ -1,17 +1,19 @@
-# 📊 Indian Stock Peer Group Analysis Dashboard
+# 📊 Market Analysis Dashboard
 
-A comprehensive Streamlit web application that allows you to compare Indian stock (NSE/BSE) performance against their peer groups. Analyze how different Indian stocks perform relative to each other over various time horizons with interactive visualizations.
+A comprehensive Streamlit web application for analyzing stocks, commodities, bonds, and mutual funds. Compare asset performance against their peer groups, track market trends, and stay updated with real-time news across multiple asset classes.
 
 ## 🎯 What This Project Does
 
-This application provides a **peer analysis dashboard** for stock market data. It enables users to:
+This application provides a **comprehensive market analysis dashboard** for multiple asset classes. It enables users to:
 
-- **Compare multiple stocks** side-by-side on normalized price charts
-- **Analyze individual stock performance** against their peer group average
+- **Compare multiple assets** (Stocks, Commodities, Bonds, Mutual Funds) side-by-side on normalized price charts
+- **Analyze individual asset performance** against their peer group average
 - **Visualize performance metrics** over different time periods (1 month to 20 years)
+- **View performance leaderboards** ranking assets by performance
+- **Filter and explore** commodities, bonds, and mutual funds by category
 - **Share analysis views** via URL parameters
-- **Explore stock relationships** through interactive charts and metrics
-- **Stay updated with real-time news** from multiple sources with automatic sentiment analysis
+- **Explore asset relationships** through interactive charts and metrics
+- **Stay updated with real-time news** from multiple sources with automatic sentiment analysis (stocks only)
 - **View market news marquee** showing latest updates for all tracked stocks
 
 ## 🏗️ Project Structure
@@ -82,6 +84,7 @@ This installs all required packages:
 - `yfinance>=0.2.55` - Stock data API
 - `pandas>=2.2.3` - Data processing
 - `altair>=5.5.0` - Charting library
+- `requests>=2.31.0` - HTTP library for news APIs
 
 ### Step 4: Run the Application
 
@@ -101,8 +104,17 @@ The app will start and display:
 
 ## 📖 How to Use the App
 
-### 1. **Select Stocks**
+### 1. **Select Asset Type**
 
+- Use the **radio buttons** at the top to choose between:
+  - **Stocks**: Indian stocks (NSE/BSE)
+  - **Commodities**: Precious metals, energy, agricultural products
+  - **Bonds**: US Treasury yields and Indian ETFs
+  - **Mutual Funds**: Indian ETFs (Nifty, sectoral, thematic)
+
+### 2. **Select Assets**
+
+#### For Stocks:
 - Use the **"Stock tickers"** multiselect dropdown in the left panel
 - Choose from 220+ verified Indian stocks (RELIANCE.NS, TCS.NS, HDFCBANK.NS, etc.)
 - Includes major large-cap, mid-cap, and well-known small-cap stocks
@@ -110,13 +122,36 @@ The app will start and display:
 - **Note**: Use `.NS` suffix for NSE (National Stock Exchange) stocks or `.BO` for BSE (Bombay Stock Exchange) stocks
 - Default selection: `["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "HINDUNILVR.NS", "ITC.NS"]`
 
-### 2. **Choose Time Horizon**
+#### For Commodities:
+- Select from commodities like **GC=F (Gold)**, **CL=F (Crude Oil)**, **SI=F (Silver)**, **NG=F (Natural Gas)**, **ZC=F (Corn)**, etc.
+- Friendly names displayed (e.g., "GC=F - Gold")
+- Info section explains what each symbol means
+- Default: `["GC=F", "CL=F", "SI=F", "NG=F", "ZC=F"]`
+
+#### For Bonds:
+- Select from US Treasury yields (**^TNX**, **^IRX**, **^FVX**, **^TYX**) and Indian ETFs
+- Friendly names displayed (e.g., "^TNX - 10-Year Treasury Yield")
+- Default: `["^TNX", "^IRX", "^FVX", "^TYX"]`
+
+#### For Mutual Funds:
+- Select from Indian ETFs like **NIFTYBEES.NS**, **BANKBEES.NS**, **ITBEES.NS**, etc.
+- **Category filter** available to filter by:
+  - Large Cap / Broad Market
+  - Mid Cap
+  - Sectoral ETFs
+  - Thematic ETFs
+  - Commodity ETFs
+  - Debt / Liquid
+- Friendly names displayed (e.g., "NIFTYBEES.NS - Nifty 50 ETF")
+- Default: `["NIFTYBEES.NS", "BANKBEES.NS", "ITBEES.NS"]`
+
+### 3. **Choose Time Horizon**
 
 - Select a time period using the **"Time horizon"** pills selector
 - Options: 1 Month, 3 Months, 6 Months, 1 Year, 5 Years, 10 Years, 20 Years
 - Default: **6 Months**
 
-### 3. **View Visualizations**
+### 4. **View Visualizations**
 
 The app displays several sections:
 
@@ -126,25 +161,31 @@ The app displays several sections:
 - Interactive tooltips on hover
 
 #### **Performance Metrics** (Left Panel Bottom)
-- **Best Stock**: Highest performing stock with percentage gain
-- **Worst Stock**: Lowest performing stock with percentage change
+- **Best Asset**: Highest performing asset with percentage gain
+- **Worst Asset**: Lowest performing asset with percentage change
+
+#### **Performance Leaderboard** (Main Section)
+- **Ranking Chart**: Horizontal bar chart ranking all selected assets by performance
+- **Color Coding**: Green bars for positive performance, red for negative
+- **Interactive Table**: Expandable table view with detailed rankings
+- **For Stocks Only**: Option to view "Current Selected Stocks" or "Top Indian Stocks" leaderboard
 
 #### **Individual vs Peer Average** (Main Section)
-- For each selected stock:
-  - **Line Chart**: Stock price vs peer average (excluding itself)
+- For each selected asset:
+  - **Line Chart**: Asset price vs peer average (excluding itself)
     - Color-coded with rotating palette (orange, dark blue, green, amber, purple, pink, teal)
     - Peer average shown in gray for consistency
-  - **Area Chart**: Difference between stock and peer average
-    - Uses matching stock color with transparency
+  - **Area Chart**: Difference between asset and peer average
+    - Uses matching asset color with transparency
     - Smooth interpolation for better visualization
-- Helps identify stocks outperforming or underperforming their peers
-- **Note**: The "peer average" when analyzing stock X always excludes X itself
+- Helps identify assets outperforming or underperforming their peers
+- **Note**: The "peer average" when analyzing asset X always excludes X itself
 
 #### **Raw Data Table** (Bottom)
-- Complete historical price data for all selected stocks
+- Complete historical price data for all selected assets
 - Sortable and searchable DataFrame
 
-### 4. **Share Your Analysis**
+### 5. **Share Your Analysis**
 
 - The URL automatically updates with selected stocks
 - Copy and share the URL to let others see the same view
@@ -299,13 +340,15 @@ st.set_page_config(...)     # Page setup (wide layout)
 
 **Why**: Sets up the foundation - imports necessary libraries and configures the page layout.
 
-#### 2. **Stock Data Constants** (Lines 30-270)
+#### 2. **Asset Data Constants** (Lines 30-410)
 ```python
 STOCKS = ["RELIANCE.NS", "TCS.NS", ...]  # 220+ verified Indian stocks
-DEFAULT_STOCKS = [...]                   # Default selection
+COMMODITIES = ["GC=F", "CL=F", ...]      # Commodity futures
+BONDS = ["^TNX", "^IRX", ...]            # Bond yields and ETFs
+MUTUAL_FUNDS = ["NIFTYBEES.NS", ...]     # Indian ETFs
 ```
 
-**Why**: Provides a curated list of verified major Indian stocks (large-cap, mid-cap, and well-known small-cap) with sensible defaults for first-time users. Invalid tickers have been removed to prevent errors.
+**Why**: Provides curated lists of verified assets with sensible defaults for first-time users. Invalid tickers have been removed to prevent errors. Includes friendly name mappings for commodities, bonds, and mutual funds.
 
 #### 3. **Session State & URL Parameters** (Lines 143-197)
 ```python
@@ -371,39 +414,51 @@ peer_avg = peers.mean(axis=1)
 
 ## ✨ Key Features
 
-### 1. **Intelligent Caching**
+### 1. **Multi-Asset Support**
+- **Stocks**: 220+ verified Indian stocks (NSE/BSE)
+- **Commodities**: Gold, Silver, Crude Oil, Natural Gas, Agricultural products, etc.
+- **Bonds**: US Treasury yields and Indian ETFs
+- **Mutual Funds**: Indian ETFs with category filtering
+- User-friendly names for all asset types
+- Category filters for mutual funds
+
+### 2. **Intelligent Caching**
 - Reduces API calls by caching data for 6 hours
 - Improves performance and respects rate limits
 - Automatically invalidates after TTL expires
 
-### 2. **URL State Management**
-- Selected stocks stored in URL query parameters
+### 3. **URL State Management**
+- Selected assets stored in URL query parameters (separate for each asset type)
 - Shareable links preserve analysis views
 - Browser back/forward navigation works
 
-### 3. **Error Handling**
+### 4. **Error Handling**
 - Rate limit detection and user-friendly warnings
 - Missing data validation
 - Empty ticker prevention
+- Graceful handling of invalid tickers
 
-### 4. **Interactive Visualizations**
+### 5. **Interactive Visualizations**
 - Hover tooltips on charts
 - Responsive layout adapts to screen size
 - Real-time updates on user input
 - Color-coded charts with rotating palette (orange, dark blue, green, etc.)
 - Smooth area chart interpolations
+- Performance leaderboard with ranking charts
 
-### 5. **Peer Analysis Logic**
+### 6. **Peer Analysis Logic**
 - Excludes self from peer average calculation
 - Provides fair comparison baseline
 - Highlights outperformance/underperformance
+- Works for all asset types
 
-### 6. **News Integration**
+### 7. **News Integration** (Stocks Only)
 - Multi-source news aggregation (Finnhub, NewsAPI, Yahoo Finance)
 - Real-time marquee for all stocks
 - Sentiment-based categorization and sorting
 - Flashcard-style display with color coding
 - Automatic filtering of invalid/duplicate articles
+- Color legend explaining sentiment categories
 
 ## 🐛 Troubleshooting
 
@@ -448,18 +503,41 @@ streamlit run streamlit_app.py --server.port 8502
 
 ## 📊 Example Use Cases
 
-1. **Portfolio Analysis**: Compare your Indian stock holdings against each other
+1. **Stock Portfolio Analysis**: Compare your Indian stock holdings against each other
 2. **Sector Comparison**: Analyze stocks within the same industry (e.g., Banking: HDFCBANK.NS, ICICIBANK.NS, KOTAKBANK.NS)
-3. **Performance Tracking**: Monitor how Indian stocks perform over time
-4. **Investment Research**: Identify outperforming stocks in a peer group
-5. **Educational**: Learn about Indian stock market trends and relationships
+3. **Commodity Tracking**: Monitor commodity prices (Gold, Oil, etc.) and compare performance
+4. **Bond Analysis**: Track Treasury yields and compare with Indian ETFs
+5. **Mutual Fund Research**: Compare ETF performance within categories (e.g., all sectoral ETFs)
+6. **Performance Tracking**: Monitor how assets perform over time across different asset classes
+7. **Investment Research**: Identify outperforming assets in a peer group
+8. **Educational**: Learn about market trends and relationships across asset classes
+9. **Leaderboard Analysis**: Quickly identify top and bottom performers
+10. **Cross-Asset Comparison**: Compare stocks vs commodities vs bonds performance
 
-## 🇮🇳 Indian Stock Ticker Format
+## 📝 Asset Ticker Formats
 
+### Stocks
 - **NSE (National Stock Exchange)**: Append `.NS` to the ticker (e.g., `RELIANCE.NS`, `TCS.NS`)
 - **BSE (Bombay Stock Exchange)**: Append `.BO` to the ticker (e.g., `RELIANCE.BO`, `TCS.BO`)
 - Most popular stocks are listed on NSE, so `.NS` is commonly used
 - You can mix NSE and BSE stocks in the same analysis
+
+### Commodities
+- Use Yahoo Finance futures symbols ending with `=F`
+- Examples: `GC=F` (Gold), `CL=F` (Crude Oil), `SI=F` (Silver), `NG=F` (Natural Gas)
+- Friendly names are displayed in the selector (e.g., "GC=F - Gold")
+- Info section explains what each symbol means
+
+### Bonds
+- US Treasury yields use `^` prefix: `^TNX` (10-Year), `^IRX` (13 Week), `^FVX` (5-Year), `^TYX` (30-Year)
+- Indian ETFs use `.NS` suffix: `GOLDBEES.NS`, `SILVER.NS`, `LIQUIDBEES.NS`
+- Friendly names are displayed in the selector
+
+### Mutual Funds
+- Indian ETFs use `.NS` suffix: `NIFTYBEES.NS`, `BANKBEES.NS`, `ITBEES.NS`
+- Only verified working ETFs are included
+- Category filter available to narrow down by fund type
+- Friendly names are displayed in the selector
 
 ## 📰 News Features
 
@@ -647,6 +725,7 @@ altair>=5.5.0
 pandas>=2.2.3
 streamlit>=1.44.2
 yfinance>=0.2.55
+requests>=2.31.0
 ```
 
 Streamlit Cloud will automatically detect and use this file.
