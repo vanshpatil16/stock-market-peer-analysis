@@ -87,7 +87,6 @@ STOCKS = [
     "NMDC.NS",
     "IOC.NS",
     "BPCL.NS",
-    "HPCL.NS",
     "GAIL.NS",
     "PETRONET.NS",
     "GSPL.NS",
@@ -112,7 +111,6 @@ STOCKS = [
     "JINDALSTEL.NS",
     "LICI.NS",
     "LUPIN.NS",
-    "MCDOWELL-N.NS",
     "NAUKRI.NS",
     "PAGEIND.NS",
     "PFC.NS",
@@ -127,11 +125,9 @@ STOCKS = [
     "TORNTPHARM.NS",
     "TVSMOTOR.NS",
     "UNIONBANK.NS",
-    "ZOMATO.NS",
     # Mid Cap Stocks
     "ABB.NS",
     "ADANIGREEN.NS",
-    "ADANITRANS.NS",
     "ALKEM.NS",
     "APLLTD.NS",
     "AUBANK.NS",
@@ -173,7 +169,6 @@ STOCKS = [
     "RATNAMANI.NS",
     "RVNL.NS",
     "SCHAEFFLER.NS",
-    "SOLARIND.NS",
     "STARHEALTH.NS",
     "SUNDARMFIN.NS",
     "SUPREMEIND.NS",
@@ -198,7 +193,6 @@ STOCKS = [
     "BATAINDIA.NS",
     "BEL.NS",
     "BLUEDART.NS",
-    "BOROSIL.NS",
     "CERA.NS",
     "COFORGE.NS",
     "COROMANDEL.NS",
@@ -218,11 +212,9 @@ STOCKS = [
     "HINDZINC.NS",
     "ICRA.NS",
     "IDEA.NS",
-    "IDFC.NS",
     "IIFL.NS",
     "INTELLECT.NS",
     "IOB.NS",
-    "JKCEMENT.NS",
     "JSWENERGY.NS",
     "KPITTECH.NS",
     "KRBL.NS",
@@ -253,13 +245,11 @@ STOCKS = [
     "SBICARD.NS",
     "SCHNEIDER.NS",
     "SRF.NS",
-    "STARHEALTH.NS",
     "SYMPHONY.NS",
     "SYNGENE.NS",
     "THERMAX.NS",
     "THYROCARE.NS",
     "TIMKEN.NS",
-    "TRENT.NS",
     "UPL.NS",
     "VGUARD.NS",
     "VMART.NS",
@@ -404,9 +394,10 @@ def is_valid_article(article: Dict) -> bool:
     if not title or title.lower() in ['no title', 'untitled', '']:
         return False
     
-    # Check for valid timestamp (not 0 or epoch start)
+    # Check for valid timestamp - be more lenient (allow 0 as fallback, but prefer valid timestamps)
     timestamp = article.get('providerPublishTime', 0)
-    if timestamp == 0 or timestamp < 946684800:  # Before year 2000
+    # Only reject if timestamp is clearly invalid (before 2000 and not 0)
+    if timestamp != 0 and timestamp < 946684800:  # Before year 2000
         return False
     
     return True
@@ -493,10 +484,10 @@ def load_all_stocks_news() -> List[Dict]:
                 finnhub_news = fetch_news_finnhub(ticker, finnhub_key)
                 all_news.extend(finnhub_news)
                 
-                # Try NewsAPI if key available
+                # Try Tavily if key available
                 if newsapi_key:
-                    newsapi_news = fetch_news_newsapi(ticker, newsapi_key)
-                    all_news.extend(newsapi_news)
+                    tavily_news = fetch_news_tavily(ticker, newsapi_key)
+                    all_news.extend(tavily_news)
                 
                 # Fallback to yfinance
                 ticker_obj = yf.Ticker(ticker)
@@ -913,41 +904,53 @@ def fetch_news_finnhub(ticker: str, api_key: Optional[str] = None) -> List[Dict]
     return articles
 
 
-def fetch_news_newsapi(ticker: str, api_key: Optional[str] = None) -> List[Dict]:
-    """Fetch news from NewsAPI (free tier available)."""
+def fetch_news_tavily(ticker: str, api_key: Optional[str] = None) -> List[Dict]:
+    """Fetch news from Tavily API (AI-powered news search)."""
     articles = []
     if not api_key:
         return articles
     
     try:
-        # Remove .NS or .BO suffix
+        # Remove .NS or .BO suffix for search
         symbol = ticker.split('.')[0]
-        url = "https://newsapi.org/v2/everything"
-        params = {
-            'q': f"{symbol} stock",
-            'language': 'en',
-            'sortBy': 'publishedAt',
-            'pageSize': 20,
-            'apiKey': api_key
+        
+        # Tavily API endpoint
+        url = "https://api.tavily.com/search"
+        payload = {
+            'api_key': api_key,
+            'query': f"{symbol} stock news",
+            'topic': 'news',
+            'max_results': 20,
+            'search_depth': 'basic',
+            'include_answer': False,
+            'include_raw_content': False
         }
         
-        response = requests.get(url, params=params, timeout=5)
+        response = requests.post(url, json=payload, timeout=10)
         if response.status_code == 200:
             data = response.json()
-            if data.get('status') == 'ok':
-                for item in data.get('articles', [])[:20]:
-                    # Convert publishedAt to timestamp
+            if data.get('results'):
+                for item in data.get('results', [])[:20]:
+                    # Tavily doesn't always provide published date, use current time as fallback
+                    timestamp = int(time.time())
                     try:
-                        pub_date = datetime.fromisoformat(item['publishedAt'].replace('Z', '+00:00'))
-                        timestamp = int(pub_date.timestamp())
+                        # Check if there's a published_date field
+                        if 'published_date' in item:
+                            pub_date_str = item.get('published_date', '')
+                            if pub_date_str:
+                                try:
+                                    pub_date = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                                    timestamp = int(pub_date.timestamp())
+                                except:
+                                    pass
                     except:
-                        timestamp = int(time.time())
+                        pass
                     
                     article = {
                         'title': item.get('title', ''),
-                        'summary': item.get('description', ''),
+                        'summary': item.get('content', '')[:500],  # Limit summary length
                         'link': item.get('url', ''),
-                        'publisher': item.get('source', {}).get('name', 'NewsAPI'),
+                        'publisher': item.get('source', 'Tavily'),
                         'providerPublishTime': timestamp,
                         'ticker': ticker
                     }
@@ -984,12 +987,12 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
             # Silently continue to next source
             pass
         
-        # Try NewsAPI if key is available
+        # Try Tavily if key is available
         if newsapi_key:
             try:
-                newsapi_news = fetch_news_newsapi(ticker, newsapi_key)
-                if newsapi_news:
-                    all_articles.extend(newsapi_news)
+                tavily_news = fetch_news_tavily(ticker, newsapi_key)
+                if tavily_news:
+                    all_articles.extend(tavily_news)
             except Exception as e:
                 # Silently continue to next source
                 pass
@@ -997,12 +1000,71 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
         # Fallback to yfinance (this should always work)
         try:
             ticker_obj = yf.Ticker(ticker)
-            yf_news = ticker_obj.news
-            if yf_news and len(yf_news) > 0:
+            # Try to get news - yfinance.news might return None, empty list, or raise exception
+            try:
+                yf_news = ticker_obj.news
+            except:
+                yf_news = None
+            
+            # yfinance.news might return None or empty list
+            if yf_news is None:
+                yf_news = []
+            
+            # Also try without .NS suffix for Indian stocks (some APIs work better this way)
+            if (not yf_news or len(yf_news) == 0) and ticker.endswith('.NS'):
+                try:
+                    base_ticker = ticker.replace('.NS', '')
+                    base_ticker_obj = yf.Ticker(base_ticker)
+                    try:
+                        yf_news = base_ticker_obj.news
+                        if yf_news is None:
+                            yf_news = []
+                    except:
+                        pass
+                except:
+                    pass
+            
+            if yf_news and isinstance(yf_news, list) and len(yf_news) > 0:
                 for article in yf_news:
-                    article['ticker'] = ticker
-                    if is_valid_article(article):
-                        all_articles.append(article)
+                    if not isinstance(article, dict):
+                        continue
+                    
+                    # Normalize yfinance article format
+                    normalized_article = {
+                        'title': article.get('title', ''),
+                        'summary': article.get('summary', article.get('description', '')),
+                        'link': article.get('link', article.get('url', '')),
+                        'publisher': article.get('publisher', article.get('source', 'Yahoo Finance')),
+                        'ticker': ticker
+                    }
+                    
+                    # Handle timestamp - yfinance uses 'providerPublishTime' or 'pubDate'
+                    timestamp = article.get('providerPublishTime', 0)
+                    if timestamp == 0:
+                        timestamp = article.get('pubDate', 0)
+                    if timestamp == 0:
+                        # Try to parse from 'publishedAt' if it's a string
+                        pub_at = article.get('publishedAt', '')
+                        if pub_at:
+                            try:
+                                # Try ISO format first
+                                dt = datetime.fromisoformat(str(pub_at).replace('Z', '+00:00'))
+                                timestamp = int(dt.timestamp())
+                            except:
+                                try:
+                                    # Try common date formats
+                                    dt = datetime.strptime(str(pub_at), '%Y-%m-%d %H:%M:%S')
+                                    timestamp = int(dt.timestamp())
+                                except:
+                                    pass
+                    if timestamp == 0:
+                        # If no timestamp, use current time as fallback
+                        timestamp = int(time.time())
+                    
+                    normalized_article['providerPublishTime'] = timestamp
+                    
+                    if is_valid_article(normalized_article):
+                        all_articles.append(normalized_article)
         except Exception as e:
             # If yfinance fails, log but continue
             pass
@@ -1028,9 +1090,7 @@ def load_news_multi_source(tickers: List[str]) -> Dict[str, List[Dict]]:
         
         if unique_articles:
             news_data[ticker] = unique_articles[:30]  # Limit to 30 per ticker
-        else:
-            # Even if no articles found, add empty list so we know we tried
-            news_data[ticker] = []
+        # Note: We don't add empty lists - only add tickers that have articles
     
     return news_data
 
@@ -1469,21 +1529,103 @@ if asset_type == "Stocks":
     if tickers:
         try:
             with st.spinner("Loading news articles..."):
-                news_data = load_news(tickers)
+                # Always clear cache first to ensure fresh data
+                load_news.clear()
+                load_news_multi_source.clear()
                 
-                # If news_data is empty, try loading directly (bypass cache)
+                # Try loading news
+                news_data = load_news_multi_source(tickers)
+                
+                # If still empty, try direct yfinance fetch as last resort
                 if not news_data or all(len(articles) == 0 for articles in news_data.values()):
-                    # Try loading without cache as fallback
-                    news_data = load_news_multi_source(tickers)
+                    # Direct fetch without cache
+                    news_data = {}
+                    for ticker in tickers:
+                        try:
+                            ticker_obj = yf.Ticker(ticker)
+                            yf_news = ticker_obj.news
+                            if yf_news and isinstance(yf_news, list) and len(yf_news) > 0:
+                                articles = []
+                                for article in yf_news:
+                                    if not isinstance(article, dict):
+                                        continue
+                                    
+                                    normalized_article = {
+                                        'title': article.get('title', ''),
+                                        'summary': article.get('summary', article.get('description', '')),
+                                        'link': article.get('link', article.get('url', '')),
+                                        'publisher': article.get('publisher', article.get('source', 'Yahoo Finance')),
+                                        'ticker': ticker
+                                    }
+                                    
+                                    timestamp = article.get('providerPublishTime', 0)
+                                    if timestamp == 0:
+                                        timestamp = article.get('pubDate', 0)
+                                    if timestamp == 0:
+                                        pub_at = article.get('publishedAt', '')
+                                        if pub_at:
+                                            try:
+                                                dt = datetime.fromisoformat(str(pub_at).replace('Z', '+00:00'))
+                                                timestamp = int(dt.timestamp())
+                                            except:
+                                                try:
+                                                    dt = datetime.strptime(str(pub_at), '%Y-%m-%d %H:%M:%S')
+                                                    timestamp = int(dt.timestamp())
+                                                except:
+                                                    timestamp = int(time.time())
+                                    if timestamp == 0:
+                                        timestamp = int(time.time())
+                                    
+                                    normalized_article['providerPublishTime'] = timestamp
+                                    
+                                    if is_valid_article(normalized_article):
+                                        articles.append(normalized_article)
+                                
+                                if articles:
+                                    news_data[ticker] = articles
+                        except Exception as e:
+                            continue
             
             # Collect all articles from all selected stocks
             all_articles = []
+            total_fetched = 0
+            total_validated = 0
             for ticker, articles in news_data.items():
                 if articles:  # Check if articles list exists and is not empty
+                    total_fetched += len(articles)
                     for article in articles:
                         if is_valid_article(article):
                             article['source_ticker'] = ticker
                             all_articles.append(article)
+                            total_validated += 1
+            
+            # Debug info (only show if no articles found)
+            if not all_articles:
+                if total_fetched > 0:
+                    st.warning(f"Fetched {total_fetched} articles but {total_validated} passed validation. This might indicate a data format issue.")
+                    # Show debug info in expander
+                    with st.expander("Debug: See fetched articles"):
+                        for ticker, articles in news_data.items():
+                            if articles:
+                                st.write(f"**{ticker}**: {len(articles)} articles")
+                                for i, article in enumerate(articles[:3]):  # Show first 3
+                                    st.json({
+                                        'title': article.get('title', 'N/A'),
+                                        'has_link': bool(article.get('link')),
+                                        'timestamp': article.get('providerPublishTime', 0),
+                                        'valid': is_valid_article(article)
+                                    })
+                else:
+                    # Show helpful message
+                    st.info("No news articles found for the selected stocks. This could be due to:")
+                    st.markdown("""
+                    - **Temporary API unavailability**: News services may be temporarily down
+                    - **No recent news**: The selected stocks may not have recent news articles
+                    - **API rate limits**: Too many requests may have triggered rate limiting
+                    - **Try**: Select different stocks or refresh the page in a few minutes
+                    """)
+                    # Show which tickers were tried
+                    st.caption(f"Attempted to fetch news for: {', '.join(tickers)}")
             
             if all_articles:
                 # Sort by sentiment (green first, then red, then blue), then by date (newest first)
