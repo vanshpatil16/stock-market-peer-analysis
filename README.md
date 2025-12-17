@@ -38,7 +38,7 @@ demo-stockpeers/
 | **yfinance** | Yahoo Finance API wrapper | Fetch real-time and historical stock data (supports Indian stocks with .NS/.BO suffix) | Data fetching in `load_data()` function |
 | **pandas** | Data manipulation library | Process and transform stock price data | Data normalization, DataFrame operations |
 | **Altair** | Declarative visualization library | Create interactive charts with minimal code | All chart visualizations (line, area charts) |
-| **requests** | HTTP library | Fetch news from multiple APIs (Finnhub, NewsAPI) | Multi-source news aggregation |
+| **requests** | HTTP library | Fetch news from multiple APIs (Finnhub, Tavily) | Multi-source news aggregation |
 | **uv** | Fast Python package manager | Quick dependency management and virtual environments | Project setup and dependency installation |
 
 ## 📋 Prerequisites
@@ -453,7 +453,7 @@ peer_avg = peers.mean(axis=1)
 - Works for all asset types
 
 ### 7. **News Integration** (Stocks Only)
-- Multi-source news aggregation (Finnhub, NewsAPI, Yahoo Finance)
+- Multi-source news aggregation (Finnhub, Tavily, Yahoo Finance)
 - Real-time marquee for all stocks
 - Sentiment-based categorization and sorting
 - Flashcard-style display with color coding
@@ -547,7 +547,7 @@ The application includes comprehensive news aggregation similar to [LiveTradeBen
 
 - **Multi-Source News Aggregation**: Fetches news from multiple sources:
   - **Finnhub** (free tier available) - Financial news focused
-  - **NewsAPI** (free tier available) - General news coverage
+  - **Tavily** (free tier available) - AI-powered news search
   - **Yahoo Finance** (fallback) - Stock-specific news
 - **Real-time News Marquee**: 
   - Scrolling ticker at the top of the page
@@ -582,10 +582,10 @@ For enhanced news coverage, you can optionally add API keys:
    - Get your free API key
    - Add to Streamlit secrets: `FINNHUB_API_KEY`
 
-2. **NewsAPI** (Optional):
-   - Sign up at [newsapi.org](https://newsapi.org)
+2. **Tavily API** (Optional - Free tier available):
+   - Sign up at [tavily.com](https://tavily.com)
    - Get your free API key
-   - Add to Streamlit secrets: `NEWSAPI_KEY`
+   - Add to Streamlit secrets: `NEWSAPI_KEY` (kept for backward compatibility)
 
 ### Setting Up API Keys in Streamlit
 
@@ -593,7 +593,7 @@ For enhanced news coverage, you can optionally add API keys:
 Create a `.streamlit/secrets.toml` file:
 ```toml
 FINNHUB_API_KEY = "your-finnhub-key-here"
-NEWSAPI_KEY = "your-newsapi-key-here"
+NEWSAPI_KEY = "your-tavily-key-here"
 ```
 
 **For Streamlit Cloud:**
@@ -601,11 +601,11 @@ NEWSAPI_KEY = "your-newsapi-key-here"
 2. Click "Secrets"
 3. Add your keys in the format:
 ```
-FINNHUB_API_KEY = "your-key"
-NEWSAPI_KEY = "your-key"
+FINNHUB_API_KEY = "your-finnhub-key"
+NEWSAPI_KEY = "your-tavily-key"
 ```
 
-**Note**: The app works without API keys using Yahoo Finance as a fallback, but adding API keys significantly improves news coverage and quality.
+**Note**: The app works without API keys using Yahoo Finance as a fallback, but adding API keys significantly improves news coverage and quality. The `NEWSAPI_KEY` secret is used for Tavily API (kept for backward compatibility).
 
 ### News Display Features
 
