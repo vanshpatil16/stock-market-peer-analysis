@@ -8,24 +8,54 @@ import requests
 import time
 
 st.set_page_config(
-    page_title="Indian Stock Peer Analysis Dashboard",
-    page_icon=":chart_with_upwards_trend:",
+    page_title="Market Insights Pro | Advanced Asset Analytics",
+    page_icon="💹",
     layout="wide",
 )
 
-"""
-# :material/query_stats: Market Analysis Dashboard
+# Custom CSS for header styling
+st.markdown("""
+<style>
+    /* Custom Header Styling */
+    .main-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem 1.5rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    .main-header h1 {
+        color: white;
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    .main-header p {
+        color: rgba(255,255,255,0.9);
+        font-size: 1.1rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-Compare stocks, commodities, and bonds to track market trends and performance.
-"""
+# Custom Header
+st.markdown("""
+<div class="main-header">
+    <h1>📈 Market Insights Pro</h1>
+    <p>Advanced Analytics Platform for Stocks, Commodities, Bonds & Mutual Funds</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Display marquee with all stocks news at the top (after functions are defined below)
 # This will be rendered after helper functions are loaded
 
 ""  # Add some space.
 
-cols = st.columns([1, 3])
-# Will declare right cell later to avoid showing it when no data.
+# Create a full-width container for tickers and metrics row
+tickers_metrics_container = st.container()
+# Will create graph container later in a new row
 
 STOCKS = [
     # Large Cap Stocks - Original Working List
@@ -587,180 +617,194 @@ def update_query_param():
         st.query_params.pop(f"{asset_type_val.lower()}_stocks", None)
 
 
-top_left_cell = cols[0].container(
-    border=True, height="stretch", vertical_alignment="center"
-)
+# Create placeholder for metrics (accessible after data loads)
+metrics_placeholder = None
 
-with top_left_cell:
-    # Create formatted options for commodities and bonds with friendly names
-    if asset_type == "Commodities":
-        # Format options as "GC=F - Gold"
-        formatted_options = {}
-        options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
-        for symbol in options_list:
-            friendly_name = COMMODITY_NAMES.get(symbol, symbol)
-            formatted_options[f"{symbol} - {friendly_name}"] = symbol
-        
-        # Display info about commodity symbols
-        with st.expander("ℹ️ What do these symbols mean?", expanded=False):
-            st.markdown("""
-            **Commodity Symbols Explained:**
-            - **GC=F** = Gold Futures
-            - **CL=F** = Crude Oil (WTI)
-            - **SI=F** = Silver Futures
-            - **NG=F** = Natural Gas
-            - **ZC=F** = Corn
-            - **KC=F** = Coffee
-            - **BZ=F** = Brent Crude
-            - **HG=F** = Copper
-            - **ZS=F** = Soybeans
-            - **ZW=F** = Wheat
-            
-            *All symbols ending with "=F" are futures contracts traded on commodity exchanges.*
-            """)
-        
-        # Multiselect with formatted options
-        selected_display = [f"{t} - {COMMODITY_NAMES.get(t, t)}" for t in st.session_state[session_key] if t in ASSET_LIST]
-        selected_display.extend([t for t in st.session_state[session_key] if t not in ASSET_LIST])
-        
-        selected_options = st.multiselect(
-            f"{asset_label} tickers",
-            options=list(formatted_options.keys()),
-            default=selected_display,
-            placeholder=f"Choose {asset_label.lower()}s to compare. Example: GC=F - Gold",
-            accept_new_options=True,
-            key=f"{asset_type}_selector"
-        )
-        
-        # Map back to actual symbols
-        tickers = []
-        for option in selected_options:
-            if option in formatted_options:
-                tickers.append(formatted_options[option])
-            else:
-                # User entered a custom option
-                tickers.append(option.split(" - ")[0] if " - " in option else option)
-        
-    elif asset_type == "Bonds":
-        # Format options as "^TNX - 10-Year Treasury Yield"
-        formatted_options = {}
-        options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
-        for symbol in options_list:
-            friendly_name = BOND_NAMES.get(symbol, symbol)
-            formatted_options[f"{symbol} - {friendly_name}"] = symbol
-        
-        # Display info about bond symbols
-        with st.expander("ℹ️ What do these symbols mean?", expanded=False):
-            st.markdown("""
-            **Bond Symbols Explained:**
-            - **^TNX** = 10-Year US Treasury Yield
-            - **^IRX** = 13 Week US Treasury Bill
-            - **^FVX** = 5-Year US Treasury Yield
-            - **^TYX** = 30-Year US Treasury Yield
-            
-            *Symbols starting with "^" are indices. Higher yields typically indicate higher interest rates.*
-            """)
-        
-        # Multiselect with formatted options
-        selected_display = [f"{t} - {BOND_NAMES.get(t, t)}" for t in st.session_state[session_key] if t in ASSET_LIST]
-        selected_display.extend([t for t in st.session_state[session_key] if t not in ASSET_LIST])
-        
-        selected_options = st.multiselect(
-            f"{asset_label} tickers",
-            options=list(formatted_options.keys()),
-            default=selected_display,
-            placeholder=f"Choose {asset_label.lower()}s to compare. Example: ^TNX - 10-Year Treasury Yield",
-            accept_new_options=True,
-            key=f"{asset_type}_selector"
-        )
-        
-        # Map back to actual symbols
-        tickers = []
-        for option in selected_options:
-            if option in formatted_options:
-                tickers.append(formatted_options[option])
-            else:
-                # User entered a custom option
-                tickers.append(option.split(" - ")[0] if " - " in option else option)
-    elif asset_type == "Mutual Funds":
-        # Format options as "HDFCEQUITY.NS - HDFC Equity Fund"
-        formatted_options = {}
-        options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
-        for symbol in options_list:
-            friendly_name = MUTUAL_FUND_NAMES.get(symbol, symbol)
-            formatted_options[f"{symbol} - {friendly_name}"] = symbol
-        
-        # Display info about mutual funds
-        with st.expander("ℹ️ About Mutual Funds & ETFs", expanded=False):
-            st.markdown("""
-            **ETF Categories:**
-            - **Large Cap / Broad Market**: Track major indices (Nifty 50, Nifty Next 50, Sensex)
-            - **Mid & Small Cap**: Focus on mid and small-cap companies
-            - **Sectoral ETFs**: Track specific sectors (Banking, IT, Pharma, Energy, FMCG, etc.)
-            - **Thematic ETFs**: Track themes (Consumption, Infrastructure)
-            - **Commodity ETFs**: Gold, Silver ETFs
-            - **Debt / Liquid**: Liquid ETFs for short-term investments
-            
-            **Note**: 
-            - ETFs trade like stocks and have real-time prices during market hours
-            - Many traditional mutual funds are not available on Yahoo Finance
-            - This list focuses on ETFs which are more reliably available
-            - Historical data shows end-of-day prices
-            """)
-        
-        # Category filter (optional enhancement)
-        selected_category = st.selectbox(
-            "Filter by Category (Optional)",
-            ["All Categories"] + list(MUTUAL_FUND_CATEGORIES.keys()),
-            key="mf_category_filter"
-        )
-        
-        if selected_category != "All Categories":
-            category_funds = MUTUAL_FUND_CATEGORIES.get(selected_category, [])
-            options_list = [f for f in options_list if f in category_funds]
-            formatted_options = {k: v for k, v in formatted_options.items() if v in category_funds}
-        
-        # Multiselect with formatted options
-        # Filter out invalid tickers from session state that don't exist in current ASSET_LIST
-        valid_session_tickers = [t for t in st.session_state[session_key] if t in ASSET_LIST]
-        
-        # Build selected_display with only valid tickers that exist in formatted_options
-        selected_display = []
-        for t in valid_session_tickers:
-            formatted_option = f"{t} - {MUTUAL_FUND_NAMES.get(t, t)}"
-            if formatted_option in formatted_options:
-                selected_display.append(formatted_option)
-        
-        selected_options = st.multiselect(
-            f"{asset_label} tickers",
-            options=list(formatted_options.keys()),
-            default=selected_display,
-            placeholder=f"Choose {asset_label.lower()}s to compare. Example: NIFTYBEES.NS - Nifty 50 ETF",
-            accept_new_options=True,
-            key=f"{asset_type}_selector"
-        )
-        
-        # Map back to actual symbols
-        tickers = []
-        for option in selected_options:
-            if option in formatted_options:
-                tickers.append(formatted_options[option])
-            else:
-                tickers.append(option.split(" - ")[0] if " - " in option else option)
-    else:
-        # Stocks - no formatting needed
-        example_placeholder = "RELIANCE.NS"
-        tickers = st.multiselect(
-            f"{asset_label} tickers",
-            options=sorted(set(ASSET_LIST) | set(st.session_state[session_key])),
-            default=st.session_state[session_key],
-            placeholder=f"Choose {asset_label.lower()}s to compare. Example: {example_placeholder}",
-            accept_new_options=True,
-            key=f"{asset_type}_selector"
-        )
+with tickers_metrics_container:
+    top_left_cell = st.container(border=True)
     
-    # Update session state
-    st.session_state[session_key] = tickers
+    with top_left_cell:
+        # Create formatted options for commodities and bonds with friendly names
+        if asset_type == "Commodities":
+            # Format options as "GC=F - Gold"
+            formatted_options = {}
+            options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
+            for symbol in options_list:
+                friendly_name = COMMODITY_NAMES.get(symbol, symbol)
+                formatted_options[f"{symbol} - {friendly_name}"] = symbol
+            
+            # Display info about commodity symbols
+            with st.expander("ℹ️ What do these symbols mean?", expanded=False):
+                st.markdown("""
+                **Commodity Symbols Explained:**
+                - **GC=F** = Gold Futures
+                - **CL=F** = Crude Oil (WTI)
+                - **SI=F** = Silver Futures
+                - **NG=F** = Natural Gas
+                - **ZC=F** = Corn
+                - **KC=F** = Coffee
+                - **BZ=F** = Brent Crude
+                - **HG=F** = Copper
+                - **ZS=F** = Soybeans
+                - **ZW=F** = Wheat
+                
+                *All symbols ending with "=F" are futures contracts traded on commodity exchanges.*
+                """)
+            
+            # Multiselect with formatted options
+            selected_display = [f"{t} - {COMMODITY_NAMES.get(t, t)}" for t in st.session_state[session_key] if t in ASSET_LIST]
+            selected_display.extend([t for t in st.session_state[session_key] if t not in ASSET_LIST])
+            
+            selected_options = st.multiselect(
+                f"{asset_label} tickers",
+                options=list(formatted_options.keys()),
+                default=selected_display,
+                placeholder=f"Choose {asset_label.lower()}s to compare. Example: GC=F - Gold",
+                accept_new_options=True,
+                key=f"{asset_type}_selector"
+            )
+            
+            # Map back to actual symbols
+            tickers = []
+            for option in selected_options:
+                if option in formatted_options:
+                    tickers.append(formatted_options[option])
+                else:
+                    # User entered a custom option
+                    tickers.append(option.split(" - ")[0] if " - " in option else option)
+        
+        elif asset_type == "Bonds":
+            # Format options as "^TNX - 10-Year Treasury Yield"
+            formatted_options = {}
+            options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
+            for symbol in options_list:
+                friendly_name = BOND_NAMES.get(symbol, symbol)
+                formatted_options[f"{symbol} - {friendly_name}"] = symbol
+            
+            # Display info about bond symbols
+            with st.expander("ℹ️ What do these symbols mean?", expanded=False):
+                st.markdown("""
+                **Bond Symbols Explained:**
+                - **^TNX** = 10-Year US Treasury Yield
+                - **^IRX** = 13 Week US Treasury Bill
+                - **^FVX** = 5-Year US Treasury Yield
+                - **^TYX** = 30-Year US Treasury Yield
+                
+                *Symbols starting with "^" are indices. Higher yields typically indicate higher interest rates.*
+                """)
+            
+            # Multiselect with formatted options
+            selected_display = [f"{t} - {BOND_NAMES.get(t, t)}" for t in st.session_state[session_key] if t in ASSET_LIST]
+            selected_display.extend([t for t in st.session_state[session_key] if t not in ASSET_LIST])
+            
+            selected_options = st.multiselect(
+                f"{asset_label} tickers",
+                options=list(formatted_options.keys()),
+                default=selected_display,
+                placeholder=f"Choose {asset_label.lower()}s to compare. Example: ^TNX - 10-Year Treasury Yield",
+                accept_new_options=True,
+                key=f"{asset_type}_selector"
+            )
+            
+            # Map back to actual symbols
+            tickers = []
+            for option in selected_options:
+                if option in formatted_options:
+                    tickers.append(formatted_options[option])
+                else:
+                    # User entered a custom option
+                    tickers.append(option.split(" - ")[0] if " - " in option else option)
+        
+        elif asset_type == "Mutual Funds":
+            # Format options as "HDFCEQUITY.NS - HDFC Equity Fund"
+            formatted_options = {}
+            options_list = sorted(set(ASSET_LIST) | set(st.session_state[session_key]))
+            for symbol in options_list:
+                friendly_name = MUTUAL_FUND_NAMES.get(symbol, symbol)
+                formatted_options[f"{symbol} - {friendly_name}"] = symbol
+            
+            # Display info about mutual funds
+            with st.expander("ℹ️ About Mutual Funds & ETFs", expanded=False):
+                st.markdown("""
+                **ETF Categories:**
+                - **Large Cap / Broad Market**: Track major indices (Nifty 50, Nifty Next 50, Sensex)
+                - **Mid & Small Cap**: Focus on mid and small-cap companies
+                - **Sectoral ETFs**: Track specific sectors (Banking, IT, Pharma, Energy, FMCG, etc.)
+                - **Thematic ETFs**: Track themes (Consumption, Infrastructure)
+                - **Commodity ETFs**: Gold, Silver ETFs
+                - **Debt / Liquid**: Liquid ETFs for short-term investments
+                
+                **Note**: 
+                - ETFs trade like stocks and have real-time prices during market hours
+                - Many traditional mutual funds are not available on Yahoo Finance
+                - This list focuses on ETFs which are more reliably available
+                - Historical data shows end-of-day prices
+                """)
+            
+            # Category filter (optional enhancement)
+            selected_category = st.selectbox(
+                "Filter by Category (Optional)",
+                ["All Categories"] + list(MUTUAL_FUND_CATEGORIES.keys()),
+                key="mf_category_filter"
+            )
+            
+            if selected_category != "All Categories":
+                category_funds = MUTUAL_FUND_CATEGORIES.get(selected_category, [])
+                options_list = [f for f in options_list if f in category_funds]
+                formatted_options = {k: v for k, v in formatted_options.items() if v in category_funds}
+            
+            # Multiselect with formatted options
+            # Filter out invalid tickers from session state that don't exist in current ASSET_LIST
+            valid_session_tickers = [t for t in st.session_state[session_key] if t in ASSET_LIST]
+            
+            # Build selected_display with only valid tickers that exist in formatted_options
+            selected_display = []
+            for t in valid_session_tickers:
+                formatted_option = f"{t} - {MUTUAL_FUND_NAMES.get(t, t)}"
+                if formatted_option in formatted_options:
+                    selected_display.append(formatted_option)
+            
+            selected_options = st.multiselect(
+                f"{asset_label} tickers",
+                options=list(formatted_options.keys()),
+                default=selected_display,
+                placeholder=f"Choose {asset_label.lower()}s to compare. Example: NIFTYBEES.NS - Nifty 50 ETF",
+                accept_new_options=True,
+                key=f"{asset_type}_selector"
+            )
+            
+            # Map back to actual symbols
+            tickers = []
+            for option in selected_options:
+                if option in formatted_options:
+                    tickers.append(formatted_options[option])
+                else:
+                    tickers.append(option.split(" - ")[0] if " - " in option else option)
+        else:
+            # Stocks - no formatting needed
+            example_placeholder = "RELIANCE.NS"
+            # Create horizontal layout: tickers on left, metrics placeholder on right
+            ticker_col, metrics_col = st.columns([2, 1])
+            
+            with ticker_col:
+                tickers = st.multiselect(
+                    f"{asset_label} tickers",
+                    options=sorted(set(ASSET_LIST) | set(st.session_state[session_key])),
+                    default=st.session_state[session_key],
+                    placeholder=f"Choose {asset_label.lower()}s to compare. Example: {example_placeholder}",
+                    accept_new_options=True,
+                    key=f"{asset_type}_selector"
+                )
+            
+            # Create metrics placeholder in the right column
+            metrics_placeholder = metrics_col.empty()
+        
+        # Update session state
+        st.session_state[session_key] = tickers
+        
+        # For non-stocks, create a placeholder at the bottom if not already created
+        if asset_type != "Stocks" and metrics_placeholder is None:
+            metrics_placeholder = st.empty()
 
 # Display marquee with all stocks news at the top (only for stocks)
 if asset_type == "Stocks" and _marquee_news:
@@ -830,11 +874,13 @@ horizon_map = {
 }
 
 with top_left_cell:
-    # Buttons for picking time horizon
-    horizon = st.pills(
+    # Buttons for picking time horizon (horizontal layout)
+    horizon = st.radio(
         "Time horizon",
         options=list(horizon_map.keys()),
-        default="6 Months",
+        index=2,  # Default to "6 Months" (index 2)
+        horizontal=True,
+        key="time_horizon"
     )
 
 tickers = [t.upper() for t in tickers]
@@ -847,13 +893,9 @@ else:
     st.query_params.pop(f"{asset_type.lower()}_stocks", None)
 
 if not tickers:
-    top_left_cell.info(f"Pick some {asset_label.lower()}s to compare", icon=":material/info:")
+    with top_left_cell:
+        st.info(f"Pick some {asset_label.lower()}s to compare", icon=":material/info:")
     st.stop()
-
-
-right_cell = cols[1].container(
-    border=True, height="stretch", vertical_alignment="center"
-)
 
 
 @st.cache_resource(show_spinner=False, ttl="6h")
@@ -1132,39 +1174,54 @@ for ticker in tickers:
     if pd.notna(latest_value) and pd.notna(normalized[ticker].iloc[0]):
         latest_norm_values[latest_value] = ticker
 
-# Only show metrics if we have valid data
-if latest_norm_values:
+# Display metrics in horizontal layout with ticker selector
+if metrics_placeholder and latest_norm_values:
     max_norm_value = max(latest_norm_values.items())
     min_norm_value = min(latest_norm_values.items())
     
-    bottom_left_cell = cols[0].container(
-        border=True, height="stretch", vertical_alignment="center"
-    )
+    # Safely calculate delta, handling NaN cases
+    max_delta = max_norm_value[0] * 100 if pd.notna(max_norm_value[0]) else 0
+    min_delta = min_norm_value[0] * 100 if pd.notna(min_norm_value[0]) else 0
     
-    with bottom_left_cell:
-        cols = st.columns(2)
-        # Safely calculate delta, handling NaN cases
-        max_delta = max_norm_value[0] * 100 if pd.notna(max_norm_value[0]) else 0
-        min_delta = min_norm_value[0] * 100 if pd.notna(min_norm_value[0]) else 0
-        
-        cols[0].metric(
+    # Display metrics in the placeholder (horizontal layout)
+    with metrics_placeholder.container():
+        metrics_cols = st.columns(2)
+        metrics_cols[0].metric(
             "Best stock",
             max_norm_value[1],
             delta=f"{round(max_delta)}%",
             width="content",
         )
-        cols[1].metric(
+        metrics_cols[1].metric(
             "Worst stock",
             min_norm_value[1],
             delta=f"{round(min_delta)}%",
             width="content",
         )
-else:
-    bottom_left_cell = cols[0].container(
-        border=True, height="stretch", vertical_alignment="center"
-    )
-    with bottom_left_cell:
+elif metrics_placeholder:
+    with metrics_placeholder.container():
         st.warning("Unable to calculate performance metrics. Some stocks may have missing data.")
+
+# Plot normalized prices in a new full-width row (show before leaderboard)
+st.markdown("---")
+graph_container = st.container(border=True)
+
+with graph_container:
+    st.markdown("## Performance Comparison Chart")
+    st.altair_chart(
+        alt.Chart(
+            normalized.reset_index().melt(
+                id_vars=["Date"], var_name="Stock", value_name="Normalized price"
+            )
+        )
+        .mark_line()
+        .encode(
+            alt.X("Date:T"),
+            alt.Y("Normalized price:Q").scale(zero=False),
+            alt.Color("Stock:N"),
+        )
+        .properties(height=400)
+    )
 
 # Performance Leaderboard
 st.markdown("---")
@@ -1338,23 +1395,6 @@ with leaderboard_container:
     else:
         st.info(f"Unable to generate leaderboard. Some {asset_label.lower()}s may have missing data.")
 
-
-# Plot normalized prices
-with right_cell:
-    st.altair_chart(
-        alt.Chart(
-            normalized.reset_index().melt(
-                id_vars=["Date"], var_name="Stock", value_name="Normalized price"
-            )
-        )
-        .mark_line()
-        .encode(
-            alt.X("Date:T"),
-            alt.Y("Normalized price:Q").scale(zero=False),
-            alt.Color("Stock:N"),
-        )
-        .properties(height=400)
-    )
 
 ""
 ""
