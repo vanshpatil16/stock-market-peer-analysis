@@ -50,3 +50,25 @@ def test_max_drawdown_half():
 def test_sortino_finite():
     r = pd.Series([0.001, -0.002, 0.003, -0.001] * 20)
     assert np.isfinite(a.sortino_ratio(r, rf=0.0))
+
+
+def test_historical_var_positive_magnitude():
+    r = pd.Series(list(np.linspace(-0.05, 0.05, 100)))
+    v = a.historical_var(r, 0.95)
+    assert v > 0
+
+
+def test_cvar_at_least_var():
+    r = pd.Series(list(np.linspace(-0.05, 0.05, 100)))
+    assert a.cvar(r, 0.95) >= a.historical_var(r, 0.95)
+
+
+def test_beta_of_scaled_series_is_scale():
+    bench = pd.Series([0.01, -0.02, 0.03, -0.015, 0.02])
+    port = bench * 2.0
+    assert abs(a.beta(port, bench) - 2.0) < 1e-9
+
+
+def test_parametric_var_finite():
+    r = pd.Series([0.001, -0.002, 0.003, -0.001] * 20)
+    assert np.isfinite(a.parametric_var(r, 0.95))

@@ -46,3 +46,34 @@ def max_drawdown(r: pd.Series) -> float:
     running_max = cum.cummax()
     drawdown = cum / running_max - 1.0
     return float(drawdown.min())
+
+
+def historical_var(r: pd.Series, confidence: float = 0.95) -> float:
+    q = float(np.percentile(r, (1.0 - confidence) * 100.0))
+    return float(-q)  # positive loss magnitude
+
+
+def parametric_var(r: pd.Series, confidence: float = 0.95) -> float:
+    z = 1.645 if abs(confidence - 0.95) < 1e-6 else 2.326  # 95% / 99%
+    mu, sigma = float(r.mean()), float(r.std(ddof=0))
+    return float(-(mu - z * sigma))
+
+
+def cvar(r: pd.Series, confidence: float = 0.95) -> float:
+    q = float(np.percentile(r, (1.0 - confidence) * 100.0))
+    tail = r[r <= q]
+    if len(tail) == 0:
+        return float(-q)
+    return float(-tail.mean())
+
+
+def beta(portfolio_r: pd.Series, benchmark_r: pd.Series) -> float:
+    df = pd.concat([portfolio_r, benchmark_r], axis=1).dropna()
+    if len(df) < 2:
+        return float("nan")
+    p, b = df.iloc[:, 0], df.iloc[:, 1]
+    var_b = float(b.var(ddof=0))
+    if var_b == 0:
+        return float("nan")
+    cov = float(np.cov(p, b, ddof=0)[0, 1])
+    return float(cov / var_b)
