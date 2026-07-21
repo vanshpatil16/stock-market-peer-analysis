@@ -13,6 +13,25 @@ st.set_page_config(
     layout="wide",
 )
 
+# --- Top-level navigation -------------------------------------------------
+_view = st.sidebar.radio(
+    "View", ["Market Explorer", "WealthLens · Portfolio Analytics"], key="app_view")
+if _view.startswith("WealthLens"):
+    import yfinance as _yf
+
+    @st.cache_resource(show_spinner=False, ttl="6h")
+    def _wl_load_data(tickers, period):
+        data = _yf.Tickers(list(tickers)).history(period=period)
+        if data is None:
+            raise RuntimeError("YFinance returned no data.")
+        close = data["Close"]
+        return close.to_frame() if getattr(close, "ndim", 2) == 1 else close
+
+    from views.portfolio_view import render as _render_wl
+    _render_wl(_wl_load_data)
+    st.stop()
+# --- End navigation -------------------------------------------------------
+
 # Custom CSS for header styling
 st.markdown("""
 <style>
