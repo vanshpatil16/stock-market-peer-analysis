@@ -30,3 +30,23 @@ def test_annualized_volatility_constant_is_zero():
 def test_annualized_return_positive():
     r = pd.Series([0.001] * 252)
     assert a.annualized_return(r) > 0
+
+
+def test_sharpe_zero_vol_is_zero():
+    r = pd.Series([0.01] * 50)
+    assert a.sharpe_ratio(r, rf=0.0) == 0.0
+
+
+def test_sharpe_positive_when_returns_beat_rf():
+    r = pd.Series([0.001, 0.002, -0.001, 0.0015] * 20)
+    assert a.sharpe_ratio(r, rf=0.0) > 0
+
+
+def test_max_drawdown_half():
+    r = pd.Series([0.0, -0.5])
+    assert abs(a.max_drawdown(r) - (-0.5)) < 1e-9
+
+
+def test_sortino_finite():
+    r = pd.Series([0.001, -0.002, 0.003, -0.001] * 20)
+    assert np.isfinite(a.sortino_ratio(r, rf=0.0))

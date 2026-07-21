@@ -24,3 +24,25 @@ def annualized_return(r: pd.Series) -> float:
 
 def annualized_volatility(r: pd.Series) -> float:
     return float(r.std(ddof=0) * np.sqrt(TRADING_DAYS))
+
+
+def sharpe_ratio(r: pd.Series, rf: float) -> float:
+    vol = annualized_volatility(r)
+    if vol == 0:
+        return 0.0
+    return float((annualized_return(r) - rf) / vol)
+
+
+def sortino_ratio(r: pd.Series, rf: float) -> float:
+    downside = r[r < 0]
+    dd = float(downside.std(ddof=0) * np.sqrt(TRADING_DAYS))
+    if dd == 0:
+        return 0.0
+    return float((annualized_return(r) - rf) / dd)
+
+
+def max_drawdown(r: pd.Series) -> float:
+    cum = (1.0 + r).cumprod()
+    running_max = cum.cummax()
+    drawdown = cum / running_max - 1.0
+    return float(drawdown.min())
