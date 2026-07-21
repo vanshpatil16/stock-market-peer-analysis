@@ -460,6 +460,74 @@ peer_avg = peers.mean(axis=1)
 - Automatic filtering of invalid/duplicate articles
 - Color legend explaining sentiment categories
 
+## 🧭 WealthLens — Portfolio Risk & Insight Cockpit (Shipped)
+
+> **Status: Shipped.** Available via the sidebar "View" selector. Designed and specced in
+> ([`docs/superpowers/specs/2026-07-21-wealthlens-portfolio-analytics-design.md`](docs/superpowers/specs/2026-07-21-wealthlens-portfolio-analytics-design.md))
+> and implemented in the pure `wealthlens/` package (unit-tested, 88% coverage).
+
+**WealthLens** extends the dashboard from *asset comparison* into *portfolio-grade
+quantitative analysis*. You enter weighted holdings, and the app computes
+institutional-style risk analytics, explains them with a grounded AI layer, and
+exports a management-ready PDF report.
+
+### Why it exists
+
+This direction is built to mirror how a modern wealth manager actually works —
+real portfolios, real risk decomposition, and **responsible AI** that explains
+deterministic numbers rather than inventing them.
+
+### Features
+
+- **Weighted-holdings model** — define a real portfolio by weight (%) or share
+  quantity; shares are converted to weights using latest prices.
+- **Quantitative risk engine** (pure, unit-tested Python):
+  - Total & annualized return, annualized volatility
+  - **Sharpe** and **Sortino** ratios
+  - **Maximum drawdown** (with underwater chart)
+  - **Value at Risk (VaR)** and **Conditional VaR (CVaR)** at 95% — historical + parametric
+  - **Beta** vs. a benchmark (default Nifty 50, `^NSEI`)
+  - **Correlation matrix** heatmap
+  - **Per-asset risk contribution** — which holdings actually drive portfolio risk
+- **Grounded AI commentary** — a provider-agnostic layer (OpenAI or Gemini) that
+  turns the computed metrics into analyst-style narrative. The AI only explains
+  numbers the engine computes; it never fabricates figures. A deterministic
+  rule-based fallback runs when no API key is present, so the app always works.
+- **One-click PDF portfolio review** — an automated, management-ready report
+  (holdings, metrics, AI narrative, charts) via `reportlab`.
+
+### Architecture
+
+New logic lives in a pure, importable package — separate from the Streamlit UI so
+it can be unit-tested in isolation (**88% coverage**, 26 tests):
+
+```
+wealthlens/
+├── portfolio.py       # weighted-holdings model (weights / shares → weights)
+├── analytics.py       # quant engine — pure functions, no Streamlit
+├── ai_commentary.py   # provider-agnostic LLM wrapper + no-key fallback
+├── report.py          # PDF portfolio-review generator
+└── config.py          # benchmark, risk-free rate, trading days, provider
+views/portfolio_view.py  # Streamlit rendering for the WealthLens tab
+tests/                   # deterministic math tests (test_analytics, test_portfolio)
+```
+
+The existing **Market Explorer** dashboard stays fully intact; WealthLens is
+reached via a top-level navigation selector.
+
+### AI provider configuration
+
+The AI commentary layer reads its key from Streamlit secrets or environment
+variables — **never hardcoded**:
+
+```toml
+# .streamlit/secrets.toml
+OPENAI_API_KEY = "your-key-here"   # or
+GEMINI_API_KEY = "your-key-here"
+```
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Issue: `ModuleNotFoundError: No module named 'yfinance'`
