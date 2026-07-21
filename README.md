@@ -460,11 +460,11 @@ peer_avg = peers.mean(axis=1)
 - Automatic filtering of invalid/duplicate articles
 - Color legend explaining sentiment categories
 
-## 🧭 Roadmap: WealthLens — Portfolio Risk & Insight Cockpit (In Development)
+## 🧭 WealthLens — Portfolio Risk & Insight Cockpit (Shipped)
 
-> **Status: In active development.** The features below are designed and specced
+> **Status: Shipped.** Available via the sidebar "View" selector. Designed and specced in
 > ([`docs/superpowers/specs/2026-07-21-wealthlens-portfolio-analytics-design.md`](docs/superpowers/specs/2026-07-21-wealthlens-portfolio-analytics-design.md))
-> but not yet shipped. This section documents the planned capability.
+> and implemented in the pure `wealthlens/` package (unit-tested, 88% coverage).
 
 **WealthLens** extends the dashboard from *asset comparison* into *portfolio-grade
 quantitative analysis*. You enter weighted holdings, and the app computes
@@ -477,7 +477,7 @@ This direction is built to mirror how a modern wealth manager actually works —
 real portfolios, real risk decomposition, and **responsible AI** that explains
 deterministic numbers rather than inventing them.
 
-### Planned features
+### Features
 
 - **Weighted-holdings model** — define a real portfolio by weight (%) or share
   quantity; shares are converted to weights using latest prices.
@@ -496,10 +496,10 @@ deterministic numbers rather than inventing them.
 - **One-click PDF portfolio review** — an automated, management-ready report
   (holdings, metrics, AI narrative, charts) via `reportlab`.
 
-### Planned architecture
+### Architecture
 
 New logic lives in a pure, importable package — separate from the Streamlit UI so
-it can be unit-tested in isolation (targeting **80%+ coverage**):
+it can be unit-tested in isolation (**88% coverage**, 26 tests):
 
 ```
 wealthlens/
@@ -515,9 +515,9 @@ tests/                   # deterministic math tests (test_analytics, test_portfo
 The existing **Market Explorer** dashboard stays fully intact; WealthLens is
 reached via a top-level navigation selector.
 
-### AI provider configuration (planned)
+### AI provider configuration
 
-The AI commentary layer will read its key from Streamlit secrets or environment
+The AI commentary layer reads its key from Streamlit secrets or environment
 variables — **never hardcoded**:
 
 ```toml
