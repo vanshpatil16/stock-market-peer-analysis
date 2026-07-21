@@ -1,5 +1,6 @@
 """Pure quantitative analytics. No Streamlit imports."""
 from __future__ import annotations
+from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from wealthlens.config import TRADING_DAYS
@@ -77,3 +78,61 @@ def beta(portfolio_r: pd.Series, benchmark_r: pd.Series) -> float:
         return float("nan")
     cov = float(np.cov(p, b, ddof=0)[0, 1])
     return float(cov / var_b)
+
+
+def correlation_matrix(asset_returns: pd.DataFrame) -> pd.DataFrame:
+    return asset_returns.corr()
+
+
+def risk_contribution(asset_returns: pd.DataFrame, weights) -> pd.Series:
+    w = np.asarray(weights, dtype=float)
+    cov = asset_returns.cov().to_numpy()
+    port_var = float(w @ cov @ w)
+    if port_var == 0:
+        return pd.Series(w, index=asset_returns.columns)
+    marginal = cov @ w
+    contrib = w * marginal             # component contributions to variance
+    contrib = contrib / contrib.sum()  # normalize to 1.0
+    return pd.Series(contrib, index=asset_returns.columns)
+
+
+@dataclass(frozen=True)
+class Metrics:
+    total_return: float
+    annualized_return: float
+    annualized_volatility: float
+    sharpe: float
+    sortino: float
+    max_drawdown: float
+    hist_var: float
+    param_var: float
+    cvar: float
+    beta: float
+    correlation: pd.DataFrame
+    risk_contribution: pd.Series
+    portfolio_returns: pd.Series
+
+
+def compute_metrics(prices, weights, benchmark_prices, rf) -> Metrics:
+    ar = daily_returns(prices)
+    pr = portfolio_returns(ar, weights)
+    if benchmark_prices is not None:
+        br = benchmark_prices.pct_change().dropna()
+        b = beta(pr, br)
+    else:
+        b = float("nan")
+    return Metrics(
+        total_return=total_return(pr),
+        annualized_return=annualized_return(pr),
+        annualized_volatility=annualized_volatility(pr),
+        sharpe=sharpe_ratio(pr, rf),
+        sortino=sortino_ratio(pr, rf),
+        max_drawdown=max_drawdown(pr),
+        hist_var=historical_var(pr),
+        param_var=parametric_var(pr),
+        cvar=cvar(pr),
+        beta=b,
+        correlation=correlation_matrix(ar),
+        risk_contribution=risk_contribution(ar, weights),
+        portfolio_returns=pr,
+    )

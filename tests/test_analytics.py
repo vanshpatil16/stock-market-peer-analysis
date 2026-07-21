@@ -72,3 +72,27 @@ def test_beta_of_scaled_series_is_scale():
 def test_parametric_var_finite():
     r = pd.Series([0.001, -0.002, 0.003, -0.001] * 20)
     assert np.isfinite(a.parametric_var(r, 0.95))
+
+
+def test_correlation_anti_correlated():
+    ar = pd.DataFrame({"A": [0.01, -0.01, 0.01, -0.01],
+                       "B": [-0.01, 0.01, -0.01, 0.01]})
+    c = a.correlation_matrix(ar)
+    assert abs(c.loc["A", "B"] - (-1.0)) < 1e-9
+
+
+def test_risk_contribution_sums_to_one():
+    ar = pd.DataFrame({"A": [0.01, -0.02, 0.03, -0.01],
+                       "B": [0.02, 0.01, -0.01, 0.005]})
+    rc = a.risk_contribution(ar, [0.5, 0.5])
+    assert abs(rc.sum() - 1.0) < 1e-9
+
+
+def test_compute_metrics_bundles_everything():
+    prices = pd.DataFrame({"A": [100, 101, 102, 101, 103],
+                           "B": [50, 49, 51, 52, 50]})
+    bench = pd.Series([200, 201, 199, 202, 203])
+    m = a.compute_metrics(prices, [0.6, 0.4], bench, rf=0.0)
+    assert hasattr(m, "sharpe") and hasattr(m, "risk_contribution")
+    assert abs(m.risk_contribution.sum() - 1.0) < 1e-9
+    assert np.isfinite(m.max_drawdown)
