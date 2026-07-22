@@ -33,7 +33,9 @@ def render(load_data):
                 options=wl_tickers.labels(),
                 help="Search by company name or symbol — no need to memorise Yahoo tickers."),
             "weight": st.column_config.NumberColumn(
-                "Weight", min_value=0.0, step=1.0, format="%.1f"),
+                "Weight", min_value=0.0, step=1.0, format="%.1f",
+                help="Relative weights — any positive numbers work and are "
+                     "auto-normalized; percentages summing to 100 recommended."),
         })
 
     col1, col2, col3 = st.columns(3)
