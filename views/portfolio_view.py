@@ -4,7 +4,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from wealthlens import ai_commentary, config
+from wealthlens import ai_commentary, config, tickers as wl_tickers
 from wealthlens.analytics import compute_metrics, correlation_long
 from wealthlens.portfolio import build_portfolio
 from wealthlens.report import build_pdf
@@ -22,10 +22,19 @@ def render(load_data):
     st.header("WealthLens · Portfolio Analytics")
     st.caption("Enter weighted holdings to compute institutional-style risk analytics.")
 
-    default = pd.DataFrame({"ticker": ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS"],
+    seed = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS"]
+    default = pd.DataFrame({"ticker": [wl_tickers.label_for(s) for s in seed],
                             "weight": [40.0, 35.0, 25.0]})
-    edited = st.data_editor(default, num_rows="dynamic", key="wl_holdings",
-                            use_container_width=True)
+    edited = st.data_editor(
+        default, num_rows="dynamic", key="wl_holdings", use_container_width=True,
+        column_config={
+            "ticker": st.column_config.SelectboxColumn(
+                "Holding", width="large", required=True,
+                options=wl_tickers.labels(),
+                help="Search by company name or symbol — no need to memorise Yahoo tickers."),
+            "weight": st.column_config.NumberColumn(
+                "Weight", min_value=0.0, step=1.0, format="%.1f"),
+        })
 
     col1, col2, col3 = st.columns(3)
     period = col1.selectbox("Period", ["6mo", "1y", "2y", "5y"], index=1)
@@ -34,6 +43,10 @@ def render(load_data):
                            step=0.005, format="%.3f")
 
     rows = edited.to_dict("records")
+    # SelectboxColumn stores the "SYMBOL — Name" label; map back to raw Yahoo
+    # symbols before validation and price fetch.
+    for r in rows:
+        r["ticker"] = wl_tickers.symbol_from_label(r.get("ticker"))
     try:
         build_portfolio(rows, mode="weight")  # validate before fetching
     except ValueError as e:
