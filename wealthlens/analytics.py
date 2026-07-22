@@ -84,6 +84,19 @@ def correlation_matrix(asset_returns: pd.DataFrame) -> pd.DataFrame:
     return asset_returns.corr()
 
 
+def correlation_long(correlation: pd.DataFrame) -> pd.DataFrame:
+    """Reshape a correlation matrix to long ['Asset A', 'Asset B', 'Correlation'] form.
+
+    Melts on the reset-index column *by position*, not the literal name "index":
+    yfinance labels the ticker axis "Ticker", so ``reset_index`` yields a "Ticker"
+    column and hardcoding ``id_vars="index"`` raises KeyError on real data.
+    """
+    wide = correlation.reset_index()
+    long = wide.melt(id_vars=wide.columns[0])
+    long.columns = ["Asset A", "Asset B", "Correlation"]
+    return long
+
+
 def risk_contribution(asset_returns: pd.DataFrame, weights) -> pd.Series:
     w = np.asarray(weights, dtype=float)
     cov = asset_returns.cov().to_numpy()

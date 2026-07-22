@@ -96,3 +96,25 @@ def test_compute_metrics_bundles_everything():
     assert hasattr(m, "sharpe") and hasattr(m, "risk_contribution")
     assert abs(m.risk_contribution.sum() - 1.0) < 1e-9
     assert np.isfinite(m.max_drawdown)
+
+
+def test_correlation_long_handles_named_ticker_axis():
+    # Regression: yfinance labels the column axis "Ticker", so the correlation
+    # matrix index is named "Ticker" and reset_index() yields no "index" column.
+    prices = pd.DataFrame({"A": [100, 101, 102, 101, 103],
+                           "B": [50, 49, 51, 52, 50]})
+    prices.columns.name = "Ticker"
+    m = a.compute_metrics(prices, [0.6, 0.4], None, rf=0.0)
+    long = a.correlation_long(m.correlation)
+    assert list(long.columns) == ["Asset A", "Asset B", "Correlation"]
+    assert len(long) == 4                       # 2x2 matrix -> 4 pairs
+    assert set(long["Asset A"]) == {"A", "B"}
+    assert set(long["Asset B"]) == {"A", "B"}
+
+
+def test_correlation_long_handles_unnamed_axis():
+    corr = a.correlation_matrix(pd.DataFrame({"A": [0.01, -0.01, 0.02],
+                                              "B": [-0.01, 0.01, -0.02]}))
+    long = a.correlation_long(corr)
+    assert list(long.columns) == ["Asset A", "Asset B", "Correlation"]
+    assert len(long) == 4

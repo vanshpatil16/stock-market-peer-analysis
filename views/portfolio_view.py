@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from wealthlens import ai_commentary, config
-from wealthlens.analytics import compute_metrics
+from wealthlens.analytics import compute_metrics, correlation_long
 from wealthlens.portfolio import build_portfolio
 from wealthlens.report import build_pdf
 
@@ -93,8 +93,7 @@ def render(load_data):
         use_container_width=True)
 
     # --- correlation heatmap ---
-    corr = m.correlation.reset_index().melt(id_vars="index")
-    corr.columns = ["Asset A", "Asset B", "Correlation"]
+    corr = correlation_long(m.correlation)
     st.altair_chart(alt.Chart(corr).mark_rect().encode(
         x="Asset A:O", y="Asset B:O",
         color=alt.Color("Correlation:Q",
